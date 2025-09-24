@@ -5,9 +5,9 @@ export const createAdminIfNotExist = async () => {
   try {
     const adminExists = await User.findOne({ role: 'admin' });
     if (!adminExists) {
-        const hashedPassword = await bcrypt.hash('admin', 10);
+        const hashedPassword = await bcrypt.hash('admin@', 10);
         const admin = new User({
-            fullname: 'Super Admin',
+            fullName: 'Super Admin',
             email: 'admin@admin.com',
             password: hashedPassword,
             phone: '0123456789',
@@ -36,7 +36,7 @@ export const insertAccount = async () => {
 
     const hashedPassword = await bcrypt.hash('123456', 10);
     const user = new User({
-      fullname: `user${i + 1}`,
+      fullName: `user${i + 1}`,
       email,
       password: hashedPassword,
       phone: `012345678${i}`,

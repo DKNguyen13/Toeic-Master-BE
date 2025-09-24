@@ -1,20 +1,22 @@
 import cors from 'cors';
 import express from "express";
-import mongoose from "mongoose";
 import connectDB from './config/db.config.js';
 import { config } from './config/env.config.js';
 import * as initData from './services/init.service.js'
+import authRouter from './routes/auth.routes.js'
 
 const app = express();
 
-app.use(express.json());
 const corsOptions = {
     origin: "http://localhost:3000",
     credentials: true,
 };
-app.use(cors(corsOptions));
 
-await mongoose.connect(config.mongodbUri);
+app.use(cors(corsOptions));
+app.use(express.json());
+
+//http://localhost:8080/api/
+app.use('/api/auth', authRouter);
 
 await connectDB();
 await initData.createAdminIfNotExist();
