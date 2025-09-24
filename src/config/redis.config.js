@@ -1,8 +1,12 @@
 import { createClient } from "redis";
 import { config } from "./env.config.js";
 
+/*
+    Redis CLI
+    Get all key: KEYS *
+    Get otp send to email: GET otp:test@gmail.com
+*/
 const redisClient = createClient({ url: config.redisUrl });
-
 redisClient.on('error', (err) => console.error('Redis Client Error', err));
 
 async function connectRedis() {

@@ -1,7 +1,9 @@
 import cors from 'cors';
 import express from "express";
 import mongoose from "mongoose";
+import connectDB from './config/db.config.js';
 import { config } from './config/env.config.js';
+import * as initData from './services/init.service.js'
 
 const app = express();
 
@@ -13,6 +15,10 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 await mongoose.connect(config.mongodbUri);
+
+await connectDB();
+await initData.createAdminIfNotExist();
+//await initData.insertAccount();
 
 app.listen(config.port, () => {
     console.log(`Server running on port ${config.port}`)
