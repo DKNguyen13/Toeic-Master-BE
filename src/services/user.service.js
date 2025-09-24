@@ -2,6 +2,8 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import User from '../models/user.model.js';
 import redisClient from '../config/redis.config.js';
+import { sendOTPEmail, sendResetPasswordEmail } from "./mail.service.js";
+import { generateAccessToken, generateRefreshToken } from '../utils/jwt.js';
 
 // Login
 export const login = async ({ email, password }) => {
@@ -13,12 +15,18 @@ export const login = async ({ email, password }) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) throw new Error('Incorrect password');
 
-    return user;
+    const payload = { id: user._id, role: user.role };
+    const accessToken = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
+    
+    const safeUser = { id: user._id, fullname: user.fullname, email: user.email, phone: user.phone, avatarUrl: user.avatarUrl, role: user.role };
+
+    return { user : safeUser, accessToken, refreshToken };
 };
 
 // Register
 export const register = async ({ fullname, email, password, phone, avatarUrl, otp }) => {
-    const storeOtp = await redisClient.get(`otp:${email}`);
+    const storedOtp = await redisClient.get(`otp:${email}`);
     
     if (!storedOtp || storedOtp !== otp) throw new Error('OTP invalid');
     
@@ -28,7 +36,7 @@ export const register = async ({ fullname, email, password, phone, avatarUrl, ot
 
     const hashedPassword = await bcrypt.hash(password, await bcrypt.genSalt(10));
 
-    const user = new User({ fullname, email, password: hashedPassword, phone, avatar, isVerified: true });
+    const user = new User({ fullname, email, password: hashedPassword, phone, avatarUrl, isVerified: true });
     await user.save();
     await redisClient.del(`otp:${email}`);
 
