@@ -16,7 +16,7 @@ export const config = {
 
     // Mail
     mailHost: process.env.MAIL_HOST,
-    mailPort: process.env.MAIL_PORT,
+    mailPort: process.env.MAIL_PORT || 587,
     mailUser: process.env.MAIL_USER,
     mailPass: process.env.MAIL_PASS,
 
