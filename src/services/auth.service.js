@@ -5,6 +5,8 @@ import redisClient from '../config/redis.config.js';
 import { sendOTPEmail, sendResetPasswordEmail } from "./mail.service.js";
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt.js';
 
+const fullNameRegex = /^[a-zA-ZÀ-ỹ\s'-]+$/;
+
 // Login
 export const login = async ({ email, password }) => {
     if (!email || !password) throw new Error('Email and password are required');
@@ -25,18 +27,27 @@ export const login = async ({ email, password }) => {
 };
 
 // Register
-export const register = async ({ fullname, email, password, phone, avatarUrl, otp }) => {
+export const register = async ({ fullName, email, password, phone, dob, avatarUrl, otp }) => {
     const storedOtp = await redisClient.get(`otp:${email}`);
     
     if (!storedOtp || storedOtp !== otp) throw new Error('OTP invalid');
     
-    if (await User.findOne( { email }))  throw new ('Email already exists');
+    if (await User.findOne( { email }))  throw new Error('Email already exists');
 
     if (phone && await User.findOne({ phone })) throw new Error('Phone already exist');
 
+    if (!fullName || !fullNameRegex.test(fullName)) throw new Error('Full name contains invalid characters');
+    
+    let dobDate = null;
+    if (dob) {
+        const [day, month, year] = dob.split('/');
+        dobDate = new Date(`${year}-${month}-${day}`); // chuyển sang YYYY-MM-DD
+        if (isNaN(dobDate.getTime())) throw new Error('Invalid date of birth');
+    }
+
     const hashedPassword = await bcrypt.hash(password, await bcrypt.genSalt(10));
 
-    const user = new User({ fullname, email, password: hashedPassword, phone, avatarUrl, isVerified: true });
+    const user = new User({ fullName, email, password: hashedPassword, phone, dob: dobDate, avatarUrl, isVerified: true });
     await user.save();
     await redisClient.del(`otp:${email}`);
 

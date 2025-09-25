@@ -15,11 +15,14 @@ export const verifyToken = (req, res, next) => {
     req.user = { id: decoded.id, role: decoded.role };
     next();
   } catch (err) {
-    return error(res, err.message, 401);
+    if (err.name === 'TokenExpiredError') {
+      return error(res, 'Access token expired', 401);
+    }
+    return error(res, 'Invalid access token', 401);
   }
 };
 
-/**
+/*
  * @param  {...string} roles
  * Ex: verifyRole('admin', 'manager')
  */
