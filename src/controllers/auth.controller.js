@@ -47,7 +47,7 @@ export const sendRegisterOtp =  async (req, res) =>{
         return success(res, result);
     }
     catch (err){
-        return error(res, '')
+        return error(res, err.message, 400)
     }
 }
 

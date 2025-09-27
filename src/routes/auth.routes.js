@@ -1,12 +1,13 @@
 import express from 'express';
-import loginLimiter from '../middleware/loginLimiter.middleware.js'
+import sendOtpLimiter from '../middleware/sendOtp.middleware.js';
 import * as AuthController from '../controllers/auth.controller.js'
+import loginLimiter from '../middleware/loginLimiter.middleware.js'
 
 const router = express.Router();
 
 router.post('/login', loginLimiter, AuthController.login);
 router.post('/register', AuthController.register);
-router.post('/send-otp', AuthController.sendRegisterOtp);
+router.post('/send-otp', sendOtpLimiter,  AuthController.sendRegisterOtp);
 router.post('/refresh-token', AuthController.refreshToken);
 router.post('/logout', AuthController.logout);
 
