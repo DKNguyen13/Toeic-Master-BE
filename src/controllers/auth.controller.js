@@ -35,10 +35,21 @@ export const register = async (req, res) => {
         return success(res, 'Register successful. Please login.')
     }
     catch (err){
-        return error(res, 'Register fail: ', err.message, 400);
+        return error(res, 'Register fail: '+ err.message, 400);
     }
 };
 
+// Send register OTP
+export const sendRegisterOtp =  async (req, res) =>{
+    try{
+        const { email } = req.body;
+        const result = await AuthService.sendRegisterOTP(email);
+        return success(res, result);
+    }
+    catch (err){
+        return error(res, '')
+    }
+}
 
 // Refresh token
 export const refreshToken = async (req, res) => {

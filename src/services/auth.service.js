@@ -5,7 +5,7 @@ import redisClient from '../config/redis.config.js';
 import { sendOTPEmail, sendResetPasswordEmail } from "./mail.service.js";
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt.js';
 
-const fullNameRegex = /^[a-zA-ZÀ-ỹ\s'-]+$/;
+const fullNameRegex = /^[\p{L}\s'-]+$/u;
 
 // Login
 export const login = async ({ email, password }) => {
