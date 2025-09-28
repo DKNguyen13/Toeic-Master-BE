@@ -23,6 +23,11 @@ export const config = {
     // Google reCAPTCHA
     recaptchaSecret: process.env.RECAPTCHA_SECRET_KEY,
 
+    // Google OAuth
+    googleClientId: process.env.GOOGLE_CLIENT_ID,
+    googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    googleServerCallback: process.env.GOOGLE_SERVER_CALLBACK,
+
     // Cookie options
     cookieSecure: process.env.COOKIE_SECURE === 'false', // true => chỉ gửi qua https
     cookieSameSite: process.env.COOKIE_SAMESITE || 'strict',

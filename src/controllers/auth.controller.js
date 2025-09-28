@@ -1,10 +1,12 @@
+import User from '../models/user.model.js';
 import { config } from '../config/env.config.js';
 import redisClient from '../config/redis.config.js';
 import { success, error } from '../utils/response.js'
 import * as AuthService from '../services/auth.service.js'
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
 
-// Login
+
+// Normal Login
 export const login = async (req, res) => {
     try {
         const { user, accessToken, refreshToken }  = await AuthService.login(req.body);
@@ -24,6 +26,33 @@ export const login = async (req, res) => {
         });
     } catch (err) {
         return error(res, err.message, 400);
+    }
+};
+
+// Google Login
+export const googleLogin = async (req, res) => {
+    try {
+        const { tokenId } = req.body;
+        const { user, accessToken, refreshToken } = await AuthService.googleLogin({ tokenId });
+
+        // Lưu refresh token vào Redis
+        await redisClient.set(`refreshToken:${user.id}`, refreshToken, { EX: 7*24*60*60 });
+
+        // Set cookie refresh token
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: config.cookieSecure,
+            sameSite: config.cookieSameSite,
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
+        });
+
+        return success(res, 'Google login successful', { 
+            user: { fullName: user.fullName, avatarUrl: user.avatarUrl },
+            accessToken
+        });
+    } catch (err) {
+        console.error("Google login error:", err);
+        return error(res, "Google login error. Please try again!", 400);
     }
 };
 
@@ -88,6 +117,7 @@ export const logout = async (req, res) => {
         return success(res, "Logged out successfully");
     }
     catch(err){
-        console.error("Error logging out user: ", err)
+        console.error("Error logging out user: ", err);
+        return error(res, "Logout failed", 500);
     }
 };

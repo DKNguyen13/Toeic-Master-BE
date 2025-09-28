@@ -1,19 +1,24 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
+import { OAuth2Client } from "google-auth-library";
 import User from '../models/user.model.js';
+import { config } from '../config/env.config.js';
 import redisClient from '../config/redis.config.js';
 import { sendOTPEmail, sendResetPasswordEmail } from "./mail.service.js";
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt.js';
 
+const client = new OAuth2Client(config.googleClientId);
+
 const fullNameRegex = /^[\p{L}\s'-]+$/u;
 
-// Login
+// Normal Login
 export const login = async ({ email, password }) => {
     if (!email || !password) throw new Error('Email and password are required');
 
     const user = await User.findOne({ email });
     if (!user) throw new Error('Email does not exist');
 
+    if (user.authType !== 'normal') throw new Error(`This account uses ${user.authType} login. Please login using Google.`);
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) throw new Error('Incorrect password');
 
@@ -21,9 +26,54 @@ export const login = async ({ email, password }) => {
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
     
-    const safeUser = { id: user._id, fullname: user.fullname, email: user.email, phone: user.phone, avatarUrl: user.avatarUrl, role: user.role };
+    const safeUser = { id: user._id, fullName: user.fullName, email: user.email, phone: user.phone, avatarUrl: user.avatarUrl, role: user.role };
 
     return { user : safeUser, accessToken, refreshToken };
+};
+
+// Google Login
+export const googleLogin = async ({ tokenId }) => {
+    if (!tokenId) throw new Error('Token ID is required');
+
+    const ticket = await client.verifyIdToken({
+        idToken: tokenId,
+        audience: config.googleClientId
+    });
+
+    const { email, name, picture } = ticket.getPayload();
+
+    let user = await User.findOne({ email });
+
+    if (user) {
+        if (user.authType === 'normal') {
+            throw new Error('Email already registered. Please login with password.');
+        }
+    } else {
+        user = new User({ 
+            fullName: name, 
+            email, 
+            avatarUrl: picture, 
+            authType: 'google', 
+            password: null, 
+            isVerified: true 
+        });
+        await user.save();
+    }
+
+    const payload = { id: user._id, role: user.role };
+    const accessToken = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
+
+    const safeUser = { 
+        id: user._id, 
+        fullName: user.fullName, 
+        email: user.email, 
+        phone: user.phone, 
+        avatarUrl: user.avatarUrl, 
+        role: user.role 
+    };
+
+    return { user: safeUser, accessToken, refreshToken };
 };
 
 // Register
@@ -47,7 +97,7 @@ export const register = async ({ fullName, email, password, phone, dob, avatarUr
 
     const hashedPassword = await bcrypt.hash(password, await bcrypt.genSalt(10));
 
-    const user = new User({ fullName, email, password: hashedPassword, phone, dob: dobDate, avatarUrl, isVerified: true });
+    const user = new User({ fullName, email, password: hashedPassword, phone, dob: dobDate, avatarUrl, authType: 'normal', isVerified: true });
     await user.save();
     await redisClient.del(`otp:${email}`);
 
