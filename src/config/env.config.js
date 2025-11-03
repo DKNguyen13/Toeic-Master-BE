@@ -7,7 +7,7 @@ export const config = {
 
     // JWT
     accessTokenKey: process.env.ACCESS_TOKEN_KEY,
-    accessTokenLife: process.env.ACCESS_TOKEN_LIFE || '5m',
+    accessTokenLife: process.env.ACCESS_TOKEN_LIFE || '1d',
     refreshTokenKey: process.env.REFRESH_TOKEN_KEY,
     refreshTokenLife: process.env.REFRESH_TOKEN_LIFE || '7d',
 
@@ -16,7 +16,7 @@ export const config = {
 
     // Mail
     mailHost: process.env.MAIL_HOST,
-    mailPort: process.env.MAIL_PORT || 587,
+    mailPort: process.env.MAIL_PORT,
     mailUser: process.env.MAIL_USER,
     mailPass: process.env.MAIL_PASS,
 
@@ -37,4 +37,22 @@ export const config = {
     cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME,
     cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
     cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
+
+    // Frontend url
+    frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
+
+    // VNPay
+    paymentSuccessPath: process.env.PAYMENT_SUCCESS_PATH || "/payment/success",
+    paymentFailPath: process.env.PAYMENT_FAIL_PATH || "/payment/fail",
+    vnp_TmnCode: process.env.VNP_TMNCODE,
+    vnp_HashSecret: process.env.VNP_HASHSECRET,
+    vnp_Url: process.env.VNP_URL || "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
+    vnp_ReturnUrl: process.env.VNP_RETURNURL || "http://localhost:3000/api/payment/return",
+
+    // Gemini AI
+    geminiApiKey: process.env.GEMINI_API_KEY,
+
+    // Meilisearch
+    meili_master_key: process.env.MEILI_MASTER_KEY,
+    meili_host: process.env.MEILI_HOST,
 };
