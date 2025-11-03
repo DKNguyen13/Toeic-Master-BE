@@ -20,7 +20,7 @@ async function connectRedis() {
     console.log('Redis connected');
   } catch (err) {
     console.warn('Redis not connected. Maybe server is not running on', config.redisUrl);
-    redisClient = null; // Không kết nối được thì gán null để tránh crash
+    redisClient = null;
   }
 }
 
