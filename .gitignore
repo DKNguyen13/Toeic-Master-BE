@@ -33,6 +33,9 @@ jspm_packages/
 .env
 .env.*.local
 
+# toxicwords files
+toxicWords.json
+
 # Build output
 dist/
 build/
