@@ -3,7 +3,7 @@ import { config } from '../config/env.config.js';
 
 const transporter = nodemailer.createTransport({
   host: config.mailHost,
-  port: config.mailPort,
+  port: config.mailPort || 587,
   secure: false,
   auth: {
     user: config.mailUser,

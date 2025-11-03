@@ -6,17 +6,22 @@ import { config } from "./env.config.js";
     Get all key: KEYS *
     Get otp send to email: GET otp:test@gmail.com
 */
-const redisClient = createClient({ url: config.redisUrl });
-redisClient.on('error', (err) => console.error('Redis Client Error', err));
 
+let redisClient;
 async function connectRedis() {
-    try {
-        await redisClient.connect();
-        console.log('Redis connected');
-    } catch (err) {
-        console.error('Cannot connect to Redis! Check if Redis server is running.', err);
-        process.exit(1);
-    }
+  try {
+    redisClient = createClient({ url: config.redisUrl });
+
+    redisClient.on('error', (err) => {
+      console.warn('Redis connection error:', err.message);
+    });
+
+    await redisClient.connect();
+    console.log('Redis connected');
+  } catch (err) {
+    console.warn('Redis not connected. Maybe server is not running on', config.redisUrl);
+    redisClient = null; // Không kết nối được thì gán null để tránh crash
+  }
 }
 
 connectRedis();
