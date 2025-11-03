@@ -1,26 +1,24 @@
 import cors from 'cors';
-import express from "express";
+import express from 'express';
+import cookieParser from 'cookie-parser';
 import connectDB from './config/db.config.js';
 import { config } from './config/env.config.js';
-import * as initData from './services/init.service.js'
-import authRouter from './routes/auth.routes.js'
+import authRouter from './routes/auth.routes.js';
 
-const app = express();
+const app = express()
 
 const corsOptions = {
-    origin: "http://localhost:3000",
-    credentials: true,
+    origin: "http://localhost:3000", // chỉ cho phép frontend ở port 3000
+    credentials: true,// bắt buộc để gửi cookie
 };
 
 app.use(cors(corsOptions));
 app.use(express.json());
+app.use(cookieParser());
 
-//http://localhost:8080/api/
 app.use('/api/auth', authRouter);
 
 await connectDB();
-await initData.createAdminIfNotExist();
-//await initData.insertAccount();
 
 app.listen(config.port, () => {
     console.log(`Server running on port ${config.port}`)
