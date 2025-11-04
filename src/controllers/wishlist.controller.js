@@ -60,3 +60,18 @@ export const toggleWishlist = async (req, res) => {
     return error(res, 'Toggle wishlist error', 500);
   }
 };
+
+// Get wishlist for user
+export const getLessonFavorite = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { lessonId } = req.params;
+
+    const count = await Wishlist.countDocuments({ lesson: lessonId });
+    const isFavorite = await Wishlist.exists({ user: userId, lesson: lessonId });
+
+    return success(res, 'Lấy trạng thái thành công', { count, isFavorite: !!isFavorite });
+  } catch (err) {
+    return error(res, err.message, 500);
+  }
+};
