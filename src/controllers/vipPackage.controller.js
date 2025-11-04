@@ -32,13 +32,3 @@ export const updatePackage = async (req, res) => {
     return error(res, err.message, 400);
   }
 };
-
-// Auto seed packages if not exist
-export const seedPackages = async (req, res) => {
-  try {
-    await PackageService.seedPackages();
-    return success(res, 'Seed 3 gói VIP thành công');
-  } catch (err) {
-    return error(res, err.message, 500);
-  }
-};
