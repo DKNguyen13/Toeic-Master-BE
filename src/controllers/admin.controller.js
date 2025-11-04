@@ -1,5 +1,6 @@
 import { success, error } from "../utils/response.js";
 import { meiliClient } from "../config/meilisearch.config.js";
+import * as AdminService from "../services/admin.service.js";
 
 // Search user
 export const searchUsers = async (req, res) => {
@@ -17,3 +18,29 @@ export const searchUsers = async (req, res) => {
         return success(res, "Lỗi khi tìm kiếm");
     }
 }
+
+// Get all users (with pagination, exclude admins)
+export const getAllUsersController = async (req, res) => {
+  try {
+        if (req.user.role !== 'admin') return error(res, 'Không có quyền truy cập', 403);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const data = await AdminService.getAllUsers(page, limit);
+        return success(res, 'Danh sách người dùng', data);
+    } catch (err) {
+        return error(res, err.message, 500);
+    }
+};
+
+//Inactivate user (admin only)
+export const changeActivateUserController = async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') return error(res, 'Không có quyền truy cập', 403);
+        const { email } = req.body;
+        const message = await AdminService.changeActivateUser(email);
+        return success(res, message);
+    }
+    catch (err) {
+        return error(res, err.message, 500);
+    }
+};
