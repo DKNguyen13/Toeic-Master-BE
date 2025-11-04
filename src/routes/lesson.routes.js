@@ -1,7 +1,7 @@
 import path from "path";
 import multer from "multer";
 import express from 'express';
-import { authenticate, optionalAuth } from '../middleware/authenticate.js';
+import { authenticate } from '../middleware/authenticate.js';
 import * as LessonController from '../controllers/lesson.controller.js';
 
 const router = express.Router();
