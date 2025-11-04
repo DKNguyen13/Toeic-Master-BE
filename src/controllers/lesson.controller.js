@@ -221,13 +221,13 @@ export const uploadLesson = async (req, res) => {
     const result = await mammoth.convertToHtml({ path: uploadedFile.path });
     const html = result.value || "<p>Không có nội dung</p>";
 
-    // Tạo file HTML trong /resources/lessons
+    // Tạo file HTML trong /storage/lessons
     const safeTitle = title.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-");
     const fileName = `${Date.now()}-${safeTitle}.html`;
 
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
-    const outputDir = path.resolve(__dirname, "../resources/lessons");
+    const outputDir = path.resolve(__dirname, "../storage/lessons");
 
     const outputPath = path.join(outputDir, fileName);
 
@@ -239,7 +239,7 @@ export const uploadLesson = async (req, res) => {
       title,
       type,
       accessLevel,
-      path: `/src/resources/lessons/${fileName}`,
+      path: `/src/storage/lessons/${fileName}`,
       createdBy: req.user._id,
     });
 
@@ -287,14 +287,14 @@ export const reuploadLesson = async (req, res) => {
 
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
-    const outputDir = path.resolve(__dirname, "../resources/lessons");
+    const outputDir = path.resolve(__dirname, "../storage/lessons");
     const outputPath = path.join(outputDir, fileName);
 
     if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
     fs.writeFileSync(outputPath, html, "utf-8");
 
     // Cập nhật lại path trong MongoDB
-    lesson.path = `/src/resources/lessons/${fileName}`;
+    lesson.path = `/src/storage/lessons/${fileName}`;
     await lesson.save();
 
     // Xóa file Word tạm sau khi convert
