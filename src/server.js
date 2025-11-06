@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import connectDB from './config/db.config.js';
 import { config } from './config/env.config.js';
 import authRouter from './routes/auth.routes.js';
+import lessonRouter from './routes/lesson.routes.js';
 import vipRouter from './routes/vipPackage.routes.js';
 
 const app = express()
@@ -19,6 +20,7 @@ app.use(cookieParser());
 
 app.use('/api/auth', authRouter);
 app.use('/api/vip', vipRouter);
+app.use('/api/lessons', lessonRouter);
 
 await connectDB();
 
