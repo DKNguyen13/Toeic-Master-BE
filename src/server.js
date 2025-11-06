@@ -10,7 +10,10 @@ import vipRouter from './routes/vipPackage.routes.js';
 const app = express()
 
 const corsOptions = {
-    origin: "http://localhost:3000", // chỉ cho phép frontend ở port 3000
+    origin: [
+    "http://localhost:3000", // user
+    "http://localhost:4000", // admin
+  ],
     credentials: true,// bắt buộc để gửi cookie
 };
 
