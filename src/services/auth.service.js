@@ -20,7 +20,8 @@ export const normalLoginService = async ({ email, password }) => {
     if (!user) throw new Error('Email không tồn tại');
     if (!user.isActive) throw new Error('Tài khoản bị vô hiệu hóa!');
     if (user.authType !== 'normal') throw new Error(`Tài khoản này đăng ký bằng ${user.authType}. Vui lòng đăng nhập bằng Google.`);
-    
+    if (user.role !== 'user') throw new Error('Hệ thống đang bảo trì! Vui lòng thử lại sau.');
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) throw new Error('Mật khẩu không đúng');
 
