@@ -354,7 +354,7 @@ export const seedLessons = async () => {
   }
 
   // Folder chứa HTML bài học
-  const lessonsDir = path.join(__dirname, "../backend/src/resources/lessons");
+  const lessonsDir = path.join(__dirname, "../Toeic-Master-BE/src/storage/lessons");
   const lessonFiles = fs.readdirSync(lessonsDir).filter(f => f.endsWith(".html"));
 
   const lessonTitles = [
