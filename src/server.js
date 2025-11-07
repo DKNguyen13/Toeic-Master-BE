@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import connectDB from './config/db.config.js';
 import { config } from './config/env.config.js';
 import authRouter from './routes/auth.routes.js';
+import adminRouter from './routes/admin.routes.js';
 import lessonRouter from './routes/lesson.routes.js';
 import vipRouter from './routes/vipPackage.routes.js';
 import wishlistRouter from './routes/wishlist.routes.js';
@@ -27,6 +28,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/vip', vipRouter);
 app.use('/api/lessons', lessonRouter);
 app.use('/api/wishlist', wishlistRouter);
+app.use('/api/admin', adminRouter);
 
 await connectDB();
 
