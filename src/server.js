@@ -7,6 +7,7 @@ import authRouter from './routes/auth.routes.js';
 import lessonRouter from './routes/lesson.routes.js';
 import vipRouter from './routes/vipPackage.routes.js';
 import wishlistRouter from './routes/wishlist.routes.js';
+import * as InitData from './services/initData.service.js';
 
 const app = express()
 
@@ -28,6 +29,13 @@ app.use('/api/lessons', lessonRouter);
 app.use('/api/wishlist', wishlistRouter);
 
 await connectDB();
+
+await InitData.createAdminIfNotExist();
+await InitData.seedPackages();
+await InitData.seedLessons();
+await InitData.seedFlashcards();
+//await InitData.seedRevenue();
+await InitData.syncMeiliUsersOnce();
 
 app.listen(config.port, () => {
     console.log(`Server running on port ${config.port}`)
