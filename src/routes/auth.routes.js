@@ -8,6 +8,7 @@ const router = express.Router();
 const upload = multer();
 
 router.post('/login', limitRequest, authController.login);
+router.post('/admin-login', limitRequest, authController.adminLogin);
 router.post('/google', authController.googleLogin);
 router.post('/send-otp', limitRequest, authController.sendOTP);
 router.post('/send-register-otp', limitRequest, authController.sendRegiOTP);
