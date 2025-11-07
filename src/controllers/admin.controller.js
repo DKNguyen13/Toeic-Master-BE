@@ -44,3 +44,32 @@ export const changeActivateUserController = async (req, res) => {
         return error(res, err.message, 500);
     }
 };
+
+// Get revenue
+export const getRevenueStatsController = async (req, res) => {
+    try {
+        if (req.user.role !== "admin") return error(res, "Không có quyền truy cập", 403);
+        const { type, year } = req.query;
+        const data = await AdminService.getRevenueStats({ type, year });
+        return success(res, "Thống kê doanh thu", data);
+    } catch (err) {
+        console.log(err.message);
+        return error(res, 'Get revenue error', 500);
+    }
+};
+
+// Get admin dashboard data
+export const getAdminDashboard = async (req, res) => {
+  try {
+    const year = Number(req.query.year) || new Date().getFullYear();
+
+    const [userStats, revenueStats] = await Promise.all([
+      AdminService.getUserStats(),
+      AdminService.getTotalRevenueByYear(year)
+    ]);
+    return success(res, "Lấy dữ liệu dashboard thành công", { userStats, revenueStats });
+  } catch (error) {
+    console.error('Lỗi Dashboard:', error);
+    return error(res, 'Hệ thống lỗi khi lấy dữ liệu dashboard', 500);
+  }
+};
