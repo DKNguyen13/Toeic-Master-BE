@@ -24,3 +24,44 @@ export const changeActivateUser = async (email) => {
     await user.save();
     return { message: 'Vô hiệu hóa tài khoản thành công' };
 };
+
+//Get revenue
+export const getRevenueStats = async ({ type = "month", year }) => {
+    const match = { status: "success" };
+
+    if (year) {
+        match.createdAt = {
+        $gte: new Date(`${year}-01-01`),
+        $lte: new Date(`${year}-12-31`)
+        };
+    }
+
+    let groupBy = {};
+    if (type === "year") {
+        groupBy = { year: { $year: "$startDate" } };
+    } else {
+        groupBy = { 
+        year: { $year: "$startDate" },
+        month: { $month: "$startDate" }
+        };
+    }
+
+    const stats = await paymentOrderModel.aggregate([
+    { $match: match },
+        {
+        $group: {
+            _id: groupBy,
+            totalRevenue: { $sum: "$pricePaid" },
+            count: { $sum: 1 }
+        }
+        },
+        { $sort: type === "year" ? { "_id.year": 1 } : { "_id.year": 1, "_id.month": 1 } }
+    ]);
+
+    return stats.map(s => ({
+        year: s._id.year,
+        month: s._id.month || null,
+        totalRevenue: s.totalRevenue,
+        count: s.count
+    }));
+};
