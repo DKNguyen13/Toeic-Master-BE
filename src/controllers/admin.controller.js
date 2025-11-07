@@ -15,7 +15,7 @@ export const searchUsers = async (req, res) => {
         return success(res, "", {hits: result.hits});
     } catch (err) {
         console.error("Search error:", err);
-        return success(res, "Lỗi khi tìm kiếm");
+        return error(res, "Lỗi khi tìm kiếm");
     }
 }
 
