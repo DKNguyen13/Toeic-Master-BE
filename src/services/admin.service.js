@@ -1,4 +1,5 @@
 import userModel from '../models/user.model.js';
+import paymentOrderModel from '../models/paymentOrder.model.js';
 
 //Get all users with pagination (exclude admins)
 export const getAllUsers = async (page = 1, limit = 10) => {
