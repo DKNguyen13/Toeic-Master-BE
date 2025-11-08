@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: function () { return this.authType === 'normal'; }
   },
-  fullname: { type: String, required: true },
+  fullname: { type: String, maxlength: 30, required: true },
   phone: {
     type: String,
     match: [/^\d{10,11}$/, 'phone number just 10 num'],
