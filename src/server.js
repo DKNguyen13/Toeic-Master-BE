@@ -7,6 +7,7 @@ import authRouter from './routes/auth.routes.js';
 import lessonRouter from './routes/lesson.routes.js';
 import vipRouter from './routes/vipPackage.routes.js';
 import wishlistRouter from './routes/wishlist.routes.js';
+import commentRouter from './routes/comment.routes.js';
 
 const app = express()
 
@@ -26,6 +27,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/vip', vipRouter);
 app.use('/api/lessons', lessonRouter);
 app.use('/api/wishlist', wishlistRouter);
+app.use('/api/comments', commentRouter);
 
 await connectDB();
 
