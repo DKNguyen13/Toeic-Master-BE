@@ -59,8 +59,8 @@ export const createFlashcard = async (req, res) => {
         if(user.role !== 'admin'){
             if (user.vip.isActive) {
                 switch (user.vip.type) {
-                    case 'basic': limit = 10; break;
-                    case 'advanced': limit = 20; break;
+                    case 'basic': limit = 50; break;
+                    case 'advanced': limit = 60; break;
                     case 'premium': limit = 100; break;
                 }
             }
