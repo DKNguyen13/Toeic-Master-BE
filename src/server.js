@@ -14,6 +14,8 @@ import partRouter from './routes/part.routes.js';
 import questionRouter from './routes/question.routes.js';
 import sessionRouter from './routes/session.routes.js';
 import * as InitData from './services/initData.service.js';
+import flashcardRoutes from './routes/flashcard.routes.js';
+import flashcardSetRoutes from './routes/flashcardSet.routes.js';
 
 const app = express()
 
@@ -39,7 +41,8 @@ app.use('/api/test', testRouter);
 app.use('/api/part', partRouter);
 app.use('/api/question', questionRouter);
 app.use('/api/session', sessionRouter);
-
+app.use('/api/flashcard', flashcardRoutes);
+app.use('/api/flashcard-set', flashcardSetRoutes);
 
 await connectDB();
 
