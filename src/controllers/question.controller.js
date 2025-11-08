@@ -6,8 +6,6 @@ import Part from "../models/part.model.js";
 import Question from "../models/question.model.js";
 import { success, error } from '../utils/response.js';
 import { uploadToCloudinary } from "../services/cloudinary.service.js";
-import { v4 as uuidv4 } from "uuid";
-
 
 // [GET] /api/test/:slug/questions
 export const getAllQuestionByTest = async (req, res) => {
