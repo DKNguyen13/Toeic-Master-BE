@@ -5,6 +5,7 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: {
     type: String,
+    minlength: 6, maxlength: 50,
     required: function () { return this.authType === 'normal'; }
   },
   fullname: { type: String, maxlength: 30, required: true },
