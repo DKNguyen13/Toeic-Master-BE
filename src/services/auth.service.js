@@ -12,6 +12,29 @@ const client = new OAuth2Client(config.googleClientId);
 
 const fullNameRegex = /^[\p{L}\s'-]+$/u;
 
+// Admin Login
+export const adminLoginService = async ({ email, password }) => {
+    if (!email || !password) throw new Error('Vui lòng nhập email và mật khẩu');
+
+    const user = await User.findOne({ email });
+    if (!user) throw new Error('Email không tồn tại');
+    if (user.role !== 'admin') throw new Error('Tài khoản không có quyền quản trị!');
+    if (!user.isActive) throw new Error('Tài khoản bị vô hiệu hóa!');
+    if (user.authType !== 'normal') throw new Error(`Tài khoản này đăng ký bằng ${user.authType}. Vui lòng dùng đăng nhập bằng mật khẩu.`);
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) throw new Error('Mật khẩu không đúng');
+
+    const payload = { id: user._id, role: user.role };
+    const accessToken = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
+
+    await redisClient.set(`refreshToken:${user._id}`, refreshToken, { EX: 7 * 24 * 60 * 60 });
+
+    const safeUser = { id: user._id, fullname: user.fullname, email: user.email, phone: user.phone, avatarUrl: user.avatarUrl, isActive : user.isActive, role: user.role };
+    return { user: safeUser, accessToken, refreshToken };
+};
+
 // Normal Login
 export const normalLoginService = async ({ email, password }) => {
     if ( !email || !password ) throw new Error('Vui lòng nhập email và mật khẩu');
@@ -20,7 +43,8 @@ export const normalLoginService = async ({ email, password }) => {
     if (!user) throw new Error('Email không tồn tại');
     if (!user.isActive) throw new Error('Tài khoản bị vô hiệu hóa!');
     if (user.authType !== 'normal') throw new Error(`Tài khoản này đăng ký bằng ${user.authType}. Vui lòng đăng nhập bằng Google.`);
-    
+    if (user.role !== 'user') throw new Error('Hệ thống đang bảo trì! Vui lòng thử lại sau.');
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) throw new Error('Mật khẩu không đúng');
 
@@ -28,10 +52,9 @@ export const normalLoginService = async ({ email, password }) => {
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
 
-    await redisClient.set(`refreshToken:${user.id}`, refreshToken, { EX: 7*24*60*60 });
+    await redisClient.set(`refreshToken:${user._id}`, refreshToken, { EX: 7 * 24 * 60 * 60 });
 
     const safeUser = { id: user._id, fullname: user.fullname, email: user.email, phone: user.phone, avatarUrl: user.avatarUrl, isActive : user.isActive, role: user.role };
-
     return { user : safeUser, accessToken, refreshToken };
 };
 

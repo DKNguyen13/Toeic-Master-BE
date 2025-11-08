@@ -6,6 +6,8 @@ const router = express.Router();
 
 router.get('/users', authenticate, adminController.getAllUsersController);
 router.get("/search-users", authenticate, adminController.searchUsers);
+router.get('/dashboard', authenticate, adminController.getAdminDashboard);
+router.get("/revenue-stats", authenticate, adminController.getRevenueStatsController);
 
 router.patch('/activate', authenticate, adminController.changeActivateUserController);
 
