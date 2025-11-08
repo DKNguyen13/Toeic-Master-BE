@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import { meiliClient } from '../config/meilisearch.config.js';
 
 const userSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true },
+  email: { type: String, minlength: 10, maxlength: 40, required: true, unique: true },
   password: {
     type: String,
     minlength: 6, maxlength: 50,
