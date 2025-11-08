@@ -7,15 +7,31 @@ import * as AuthService from '../services/auth.service.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { verifyRefreshToken, generateAccessToken } from '../utils/jwt.js';
 
+// Admin Login
+export const adminLogin = async (req, res) => {
+        try {
+        const { user, accessToken, refreshToken } = await AuthService.adminLoginService(req.body);
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: config.cookieSecure,
+            sameSite: config.cookieSameSite,
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        });
+
+        return success(res, 'Đăng nhập thành công', { 
+            user: { id: user.id, fullname: user.fullname, email : user.email, phone : user.phone, avatarUrl : user.avatarUrl, role : user.role },
+            accessToken
+        });
+    } catch (err) {
+        console.log('Admin login error:', err.message);
+        return error(res, err.message, 400);
+    }
+}
+
 // Normal Login
 export const login = async (req, res) => {
     try {
         const { user, accessToken, refreshToken } = await AuthService.normalLoginService(req.body);
-        
-        if (!user.isActive) return error(res, "Tài khoản đã bị vô hiệu hóa!", 403);
-
-        await redisClient.set(`refreshToken:${user._id}`, refreshToken, { EX: 7 * 24 * 60 * 60 });
-
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             secure: config.cookieSecure,
