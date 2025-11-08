@@ -9,6 +9,7 @@ import lessonRouter from './routes/lesson.routes.js';
 import vipRouter from './routes/vipPackage.routes.js';
 import wishlistRouter from './routes/wishlist.routes.js';
 import commentRouter from './routes/comment.routes.js';
+import testRouter from './routes/test.routes.js';
 import * as InitData from './services/initData.service.js';
 
 const app = express()
@@ -25,12 +26,14 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 
+app.use('/api/admin', adminRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/vip', vipRouter);
 app.use('/api/lessons', lessonRouter);
 app.use('/api/wishlist', wishlistRouter);
 app.use('/api/comments', commentRouter);
-app.use('/api/admin', adminRouter);
+app.use('/api/test', testRouter);
+
 
 await connectDB();
 
