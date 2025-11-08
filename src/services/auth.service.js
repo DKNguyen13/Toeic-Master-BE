@@ -115,7 +115,11 @@ export const registerService = async ({ fullname, email, password, phone, dob, a
     if (phone && await User.findOne({ phone })) throw new Error('Số điện thoại đã tồn tại!');
 
     if (!fullname || !fullNameRegex.test(fullname)) throw new Error('Họ tên chứa ký tự không hợp lệ!');
-    
+
+    if (fullname.length > 30) throw new Error("Họ tên không được vượt quá 30 ký tự!");
+    if (email.length > 40) throw new Error("Email không được vượt quá 40 ký tự!");
+    if (password.length > 50) throw new Error("Mật khẩu không được vượt quá 50 ký tự!");
+
     let dobDate = null;
     if (dob) {
         const [day, month, year] = dob.split('/');
