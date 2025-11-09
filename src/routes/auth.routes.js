@@ -3,6 +3,7 @@ import express from 'express';
 import { authenticate } from '../middleware/authenticate.js';
 import * as authController from '../controllers/auth.controller.js';
 import limitRequest from '../middleware/limitRequest.middleware.js';
+import { getUserPurchaseHistory } from '../controllers/payment.controller.js'
 
 const router = express.Router();
 const upload = multer();
@@ -22,5 +23,6 @@ router.patch('/update-profile', authenticate, upload.single('avatar'), authContr
 
 router.get('/profile', authenticate, authController.getProfile);
 router.get('/check-role', authController.checkRole);
+router.get('/purchase-history', authenticate, getUserPurchaseHistory);
 
 export default router;
