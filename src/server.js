@@ -14,10 +14,18 @@ import testRouter from './routes/test.routes.js';
 import partRouter from './routes/part.routes.js';
 import questionRouter from './routes/question.routes.js';
 import sessionRouter from './routes/session.routes.js';
-import * as InitData from './services/initData.service.js';
 import flashcardRoutes from './routes/flashcard.routes.js';
 import flashcardSetRoutes from './routes/flashcardSet.routes.js';
+import notificationRouter from './routes/notification.routes.js';
 
+// Services
+import * as InitData from './services/initData.service.js';
+import NotificationService from "./services/notification.service.js";
+
+
+// socket
+import { Server } from "socket.io";
+import { initChatbotSocket } from './sockets/chatbot/chatbotSocket.js';
 const app = express()
 
 const corsOptions = {
@@ -45,6 +53,7 @@ app.use('/api/question', questionRouter);
 app.use('/api/session', sessionRouter);
 app.use('/api/flashcard', flashcardRoutes);
 app.use('/api/flashcard-set', flashcardSetRoutes);
+app.use('/api/notifications', notificationRouter);
 
 await connectDB();
 
@@ -55,8 +64,20 @@ await InitData.seedFlashcards();
 //await InitData.seedRevenue();
 await InitData.syncMeiliUsersOnce();
 
+const io = new Server(8081, {
+    cors: {
+        origin: "*",          // Cho phép mọi nguồn truy cập (FE mở file local cũng được)
+        methods: ["GET", "POST"]
+    }
+});
+
+const onlineUsers = initChatbotSocket(io, { geminiApiKey: config.geminiApiKey });
+
+const notificationService = new NotificationService(io, onlineUsers);
+app.set('notificationService', notificationService);
+
 app.listen(config.port, () => {
   console.log(`Server running on port ${config.port}`)
-})
+});
 
 export default app;
