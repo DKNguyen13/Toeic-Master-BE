@@ -1,6 +1,6 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { promptPrefix } from "../../utils/constant";
+import { promptPrefix } from "../../utils/constant.js";
 import mongoose from "mongoose";
 
 export function initChatbotSocket(io, options = {}) {
