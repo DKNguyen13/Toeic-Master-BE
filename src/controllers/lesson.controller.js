@@ -162,9 +162,11 @@ export const updateLesson = async (req, res) => {
       req.body,
       { new: true }
     );
+    
     if (!lesson) return error(res, "Lesson không tìm thấy", 404);
     const favoriteCount = await Wishlist.countDocuments({ lesson: lesson._id });
     let isFavorite = false;
+    
     if (req.user) {
       const exists = await Wishlist.exists({ user: req.user._id, lesson: lesson._id });
       isFavorite = !!exists;
