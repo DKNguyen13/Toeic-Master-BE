@@ -29,6 +29,7 @@
     "mongoose": "^8.18.0",
     "mongoose-slug-updater": "^3.3.0",
     "multer": "^2.0.2",
+    "node-cron": "^4.2.1",
     "nodemailer": "^7.0.6",
     "redis": "^5.8.2",
     "socket.io": "^4.8.1",
