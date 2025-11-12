@@ -5,7 +5,7 @@ import { config } from '../config/env.config.js';
 import { OAuth2Client } from "google-auth-library";
 import redisClient from '../config/redis.config.js';
 import { uploadAvatar } from './cloudinary.service.js';
-import { sendOTPEmail, sendResetPasswordEmail } from './mail.service.js';
+import { sendOTPEmail, sendResetPasswordEmail, sendSupportEmail } from './mail.service.js';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt.js';
 
 const client = new OAuth2Client(config.googleClientId);
@@ -168,9 +168,7 @@ export const sendOTPService = async (email) => {
     if (!email) throw new Error('Vui lòng nhập email!');
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-        throw new Error('Email không hợp lệ!');
-    }
+    if (!emailRegex.test(email)) throw new Error('Email không hợp lệ!');
 
     const user = await User.findOne({ email });
     if (!user) throw new Error('Email không tồn tại!');
@@ -186,13 +184,20 @@ export const sendOTPService = async (email) => {
 
     const newPassword = crypto.randomBytes(4).toString('hex');
     user.password = await bcrypt.hash(newPassword, await bcrypt.genSalt(10));
+
     await user.save();
-
     await sendResetPasswordEmail(email, `Mật khẩu mới của bạn là: ${newPassword}`);
-
     await redisClient.setEx(`reset:${email}`, 60, 'sent');
-
     return { message: 'Mật khẩu mới đã được gửi tới email của bạn!', cooldown: 60 };
+};
+
+// Send support email
+export const sendSupportEmailService = async (to, userName, issueTitle, issueContent) => {
+    if( !to || !userName || !issueTitle || !issueContent ) {
+        throw new Error('Vui lòng điền đầy đủ thông tin!');
+    }
+    await sendSupportEmail(to, userName, issueTitle, issueContent);
+    return { message: 'Gửi yêu cầu hỗ trợ thành công! Vui lòng kiểm tra mail trong vòng 24h.' };
 };
 
 //Reset password
