@@ -4,6 +4,7 @@ import { authenticate } from '../middleware/authenticate.js';
 import * as authController from '../controllers/auth.controller.js';
 import limitRequest from '../middleware/limitRequest.middleware.js';
 import { getUserPurchaseHistory } from '../controllers/payment.controller.js'
+import { limitSupport } from '../middleware/limitSupport.middleware.js';
 
 const router = express.Router();
 const upload = multer();
@@ -16,7 +17,7 @@ router.post('/send-register-otp', limitRequest, authController.sendRegiOTP);
 router.post('/register', authController.register);
 router.post('/forgot-password', authController.resetPassword);
 router.post('/refresh-token', authController.refreshToken);
-router.post('/support', limitRequest, authenticate, authController.sendSupportEmail);
+router.post('/support',  authenticate, limitSupport, authController.sendSupportEmail);
 router.post('/logout', authController.logout);
 
 router.patch('/change-password', authenticate, authController.changePassword);
