@@ -21,14 +21,10 @@ export const importTestFromExcel = async (req, res) => {
     }
 
     // Validate form data
-    const { title, testCode, audio, description, isActive, isPremium, isFeatured, isOfficial } = req.body;
+    const { title, audio, description, isActive, isPremium, isFeatured, isOfficial } = req.body;
 
     if (!title?.trim()) {
-      return error(res, 'Tiêu đề test là bắt buộc', 400);
-    }
-
-    if (!testCode?.trim()) {
-      return error(res, 'Mã test là bắt buộc', 400);
+      return error(res, 'Tên đề thi là bắt buộc', 400);
     }
 
     if (!audio?.trim()) {
@@ -46,10 +42,9 @@ export const importTestFromExcel = async (req, res) => {
     // Prepare test data
     const testData = {
       title,
-      testCode,
       audio,
-      // description: description || '',
-      // isActive: isActive === 'true' || isActive === true,
+      description: description || null,
+      isActive: isActive === 'true' || isActive === true,
       // isPremium: isPremium === 'true' || isPremium === true,
       // isFeatured: isFeatured === 'true' || isFeatured === true,
       // isOfficial: isOfficial === 'true' || isOfficial === true
