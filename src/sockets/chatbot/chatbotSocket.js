@@ -20,11 +20,15 @@ export function initChatbotSocket(io, options = {}) {
             //     " hoặc làm theo các yêu cầu bên dưới ngắn gọn và dễ hiểu." +
             //     "Nếu như câu hỏi không liên quan đến tiếng anh, hãy từ chối trả lời một cách lịch sự. Bạn chỉ trả lời thôi, đừng giới thiệu bạn là ai"
             // message = extraPrompt + message;
-            message = promptPrefix + message;
-            console.log(message)
-            const response = await chat.sendMessage({ message: message });
-            console.log(response.text)
-            socket.emit('response', response.text);
+            try {
+                message = promptPrefix + message;
+                console.log(message)
+                const response = await chat.sendMessage({ message: message });
+                console.log(response.text)
+                socket.emit('response', response.text);
+            } catch (err) {
+                console.log(`Error when sendMessage: ${err.message}`);
+            }
         });
 
         // Đăng ký user
