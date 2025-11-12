@@ -27,7 +27,7 @@ export const syncMeiliUsersOnce = async () => {
 };
 
 // Test VIP expiry notification
-export const testVIPExpiryNotification = async () => {
+export const testVIPExpiryNotification = async (notificationService) => {
   try{
     console.log('Testing VIP expiry notifications...');
     await notificationService.sendVIPExpiryNotification();
