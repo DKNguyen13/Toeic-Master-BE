@@ -96,9 +96,7 @@ export const importTestFromExcel = async (filePath, testData, userId) => {
     if (!testData.title?.trim()) {
       throw new Error('Test title is required');
     }
-    if (!testData.testCode?.trim()) {
-      throw new Error('Test code is required');
-    }
+    
     if (!testData.audio?.trim()) {
       throw new Error('Test audio URL is required');
     }
@@ -110,10 +108,10 @@ export const importTestFromExcel = async (filePath, testData, userId) => {
       throw new Error('Excel file is empty or invalid format');
     }
 
-    // Check if test with same testCode already exists
-    const existingTest = await Test.findOne({ testCode: testData.testCode.trim() }).session(session);
+    // Check if test with same test title already exists
+    const existingTest = await Test.findOne({ title: testData.title.trim() }).session(session);
     if (existingTest) {
-      throw new Error(`Test with code "${testData.testCode}" already exists`);
+      throw new Error(`Test with title "${testData.title}" already exists`);
     }
 
     // Validate all rows
@@ -131,7 +129,6 @@ export const importTestFromExcel = async (filePath, testData, userId) => {
     const test = new Test({
       title: testData.title.trim(),
       audio: testData.audio.trim(),
-      testCode: testData.testCode.trim(),
       description: testData.description?.trim() || '',
       isActive: testData.isActive !== undefined ? testData.isActive : true,
       isPremium: testData.isPremium !== undefined ? testData.isPremium : false,
