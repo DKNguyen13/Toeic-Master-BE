@@ -24,6 +24,8 @@ export const adminLoginService = async ({ email, password }) => {
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) throw new Error('Mật khẩu không đúng');
+    
+    await user.checkVipStatus();
 
     const payload = { id: user._id, role: user.role };
     const accessToken = generateAccessToken(payload);
@@ -44,9 +46,11 @@ export const normalLoginService = async ({ email, password }) => {
     if (!user.isActive) throw new Error('Tài khoản bị vô hiệu hóa!');
     if (user.authType !== 'normal') throw new Error(`Tài khoản này đăng ký bằng ${user.authType}. Vui lòng đăng nhập bằng Google.`);
     if (user.role !== 'user') throw new Error('Hệ thống đang bảo trì! Vui lòng thử lại sau.');
-
+    
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) throw new Error('Mật khẩu không đúng');
+
+    await user.checkVipStatus();
 
     const payload = { id: user._id, role: user.role };
     const accessToken = generateAccessToken(payload);
@@ -84,7 +88,7 @@ export const googleLoginService = async ({ tokenId }) => {
         });
         await user.save();
     }
-
+    await user.checkVipStatus();
     const payload = { id: user._id, role: user.role };
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
@@ -100,7 +104,6 @@ export const googleLoginService = async ({ tokenId }) => {
     };
     
     await redisClient.set(`refreshToken:${user.id}`, refreshToken, { EX: 7*24*60*60 });
-
     return { user: safeUser, accessToken, refreshToken };
 };
 

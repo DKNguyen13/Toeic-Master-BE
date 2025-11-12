@@ -98,4 +98,20 @@ userSchema.methods.updateStatistics = async function (results) {
   } catch (err) {
     console.error('? [User] Error updating statistics:', err);
   }
-}; export default mongoose.model('User', userSchema);
+};
+
+userSchema.methods.checkVipStatus = async function () {
+  try {
+    if (this.vip.isActive && this.vip.endDate && new Date(this.vip.endDate) < new Date()) {
+      this.vip.isActive = false;
+      this.vip.type = null;
+      this.vip.endDate = null;
+      await this.save();
+      console.log("[User] VIP gói đã hết hạn, cập nhật trạng thái.");
+    }
+  } catch (err) {
+    console.error("[User] Lỗi khi kiểm tra gói VIP:", err);
+  }
+};
+
+export default mongoose.model('User', userSchema);
