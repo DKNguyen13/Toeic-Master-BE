@@ -228,6 +228,7 @@ export const sendSupportEmail = async (fromUserEmail, userName, issueTitle, issu
 
         <div class="info-box">
           <p><strong>Người gửi:</strong> ${userName}</p>
+          <p><strong>Email:</strong> ${fromUserEmail}</p>
           <p><strong>Tiêu đề:</strong> ${issueTitle}</p>
           <p><strong>Nội dung chi tiết:</strong></p>
           <p>${issueContent}</p>
