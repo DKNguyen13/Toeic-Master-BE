@@ -1,4 +1,5 @@
 import cors from 'cors';
+import cron from 'node-cron';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import connectDB from './config/db.config.js';
@@ -21,7 +22,6 @@ import notificationRouter from './routes/notification.routes.js';
 // Services
 import * as InitData from './services/initData.service.js';
 import NotificationService from "./services/notification.service.js";
-
 
 // socket
 import { Server } from "socket.io";
@@ -78,6 +78,18 @@ app.set('notificationService', notificationService);
 
 app.listen(config.port, () => {
   console.log(`Server running on port ${config.port}`)
+});
+
+await InitData.testVIPExpiryNotification(notificationService);
+
+// Cron job kiểm tra ngày hết hạn VIP mỗi ngày vào 00:00 (trong ngày)
+cron.schedule('0 0 * * *', async () => {
+    console.log('Running cron job to send VIP expiry notifications at 00:00');
+    try {
+        await notificationService.sendVIPExpiryNotification();
+    } catch (error) {
+        console.error('Error while sending VIP expiry notifications:', error);
+    }
 });
 
 export default app;
