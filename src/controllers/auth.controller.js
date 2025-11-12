@@ -117,11 +117,11 @@ export const sendRegiOTP = async (req, res) => {
 export const sendSupportEmail = async (req, res) => {
     try {
         const userId = req.user.id;
-        const email = await userModel.findById(userId).select("email");
-        if (!email) return error(res, "Người dùng không tồn tại", 404);
+        const user = await userModel.findById(userId).select("email");
+        if (!user) return error(res, "Người dùng không tồn tại", 404);
 
         const { name, title, content } = req.body;
-        const result = await AuthService.sendSupportEmailService(email, name, title, content);
+        const result = await AuthService.sendSupportEmailService(user.email, name, title, content);
         return success(res, result.message);
     } catch (err) {
         console.log("Send support email fail:", err.message);
