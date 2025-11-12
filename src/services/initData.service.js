@@ -11,6 +11,7 @@ import PaymentOrder from "../models/paymentOrder.model.js";
 import FlashcardSet from "../models/flashcardSet.model.js";
 import ScoreMapping from "../models/scoreMapping.model.js";
 import { estimateScore } from "../services/score.service.js";
+import NotificationService from "../services/notification.service.js";
 
 const __dirname = path.resolve();
 
@@ -23,6 +24,18 @@ export const syncMeiliUsersOnce = async () => {
   } catch (err) {
     console.error("Error syncing Meilisearch:", err);
   }
+};
+
+// Test VIP expiry notification
+export const testVIPExpiryNotification = async () => {
+  try{
+    console.log('Testing VIP expiry notifications...');
+    await notificationService.sendVIPExpiryNotification();
+  }
+  catch (err){
+    console.error("Error test notification:", err);
+  }
+
 };
 
 // Seed revenue
