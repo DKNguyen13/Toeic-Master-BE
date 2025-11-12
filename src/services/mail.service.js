@@ -250,7 +250,5 @@ export const sendSupportEmail = async (fromUserEmail, userName, issueTitle, issu
     subject: "Yêu Cầu Hỗ Trợ Mới - Toeic Master",
     html: htmlContent,
   });
-
-  console.log(`Support email sent to ${to}`);
 };
 
