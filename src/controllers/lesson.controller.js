@@ -19,6 +19,13 @@ const getLessonContent = (lesson) => {
   return "<h1>Chưa có dữ liệu</h1>";
 };
 
+// Get all lesson free list text
+export const getLessonListText = async () => {
+    const lessons = await Lesson.find({ isDeleted: false, accessLevel: "free" });
+    if (!lessons || lessons.length === 0) return "Hiện tại chưa có bài học miễn phí nào.";
+    return lessons.map((lesson, index) => `${index + 1}. ${lesson.title}`).join("\n");
+}
+
 // Create lesson
 export const createLesson = async (req, res) => {
   try {

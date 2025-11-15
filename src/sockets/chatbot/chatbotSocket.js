@@ -3,6 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 import mongoose from "mongoose";
 import { promptPrefix } from "../../utils/constant.js";
 import { getAllPackages } from "../../services/vipPackage.service.js";
+import { getLessonListText } from "../../controllers/lesson.controller.js"
 
 export function initChatbotSocket(io, options = {}) {
     const { geminiApiKey } = options;
@@ -24,8 +25,10 @@ export function initChatbotSocket(io, options = {}) {
                         `${index + 1}. Gói ${pkg.name || pkg.type.toUpperCase()} — Giá gốc: ${pkg.originalPrice.toLocaleString()}đ, Giá ưu đãi: ${pkg.discountedPrice.toLocaleString()}đ. Mô tả: ${pkg.description}`
                     )
                     .join("\n");
-                message = promptPrefix(packageListText) + message;
-                console.log(message)
+                const lessonListText = await getLessonListText();
+
+                message = promptPrefix(packageListText, lessonListText) + message;
+                //console.log(message)
             
                 const response = await chat.sendMessage({ message: message });
                 console.log(response.text)
