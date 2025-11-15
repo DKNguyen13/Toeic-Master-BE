@@ -1,7 +1,9 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { promptPrefix } from "../../utils/constant.js";
 import mongoose from "mongoose";
+import { promptPrefix } from "../../utils/constant.js";
+import { getAllPackages } from "../../services/vipPackage.service.js";
+import { getLessonListText } from "../../controllers/lesson.controller.js"
 
 export function initChatbotSocket(io, options = {}) {
     const { geminiApiKey } = options;
@@ -16,18 +18,28 @@ export function initChatbotSocket(io, options = {}) {
             }
         })
         socket.on('message', async (message) => {
-            // const extraPrompt = "Hãy hình dung bạn là một người thầy dạy học tiếng anh, bạn hãy trả lời câu hỏi" +
-            //     " hoặc làm theo các yêu cầu bên dưới ngắn gọn và dễ hiểu." +
-            //     "Nếu như câu hỏi không liên quan đến tiếng anh, hãy từ chối trả lời một cách lịch sự. Bạn chỉ trả lời thôi, đừng giới thiệu bạn là ai"
-            // message = extraPrompt + message;
             try {
-                message = promptPrefix + message;
-                console.log(message)
+                const packages = await getAllPackages();
+                const packageListText = packages
+                    .map((pkg, index) =>
+                        `${index + 1}. Gói ${pkg.name || pkg.type.toUpperCase()} — Giá gốc: ${pkg.originalPrice.toLocaleString()}đ, Giá ưu đãi: ${pkg.discountedPrice.toLocaleString()}đ. Mô tả: ${pkg.description}`
+                    )
+                    .join("\n");
+                const lessonListText = await getLessonListText();
+
+                message = promptPrefix(packageListText, lessonListText) + message;
+                //console.log(message)
+            
                 const response = await chat.sendMessage({ message: message });
                 console.log(response.text)
                 socket.emit('response', response.text);
-            } catch (err) {
-                console.log(`Error when sendMessage: ${err.message}`);
+            } catch (error) {
+                console.error('Error sending message to AI:', error);
+                if (error.status === 429 || (error.error && error.error.code === 429)) {
+                    socket.emit('response', 'Hệ thống đang quá tải, vui lòng thử lại sau.');
+                } else {
+                    socket.emit('response', 'Có lỗi xảy ra, vui lòng thử lại.');
+                }
             }
         });
 
