@@ -22,8 +22,14 @@ export const createSet = async (req, res) => {
                     case 'premium': limit = 10; break;
                 }
             }
-            const count = await FlashcardSet.countDocuments({ user: userId });  
-            if (count >= limit) return error(res, `Bạn đã đạt giới hạn ${limit} tạo bộ flashcard. Nâng cấp VIP để tạo thêm!`, 403);
+            const count = await FlashcardSet.countDocuments({ user: userId });
+            if (count >= limit && limit > 0) {
+                if (limit < 10) {
+                    return error(res, `Bạn đã đạt giới hạn ${limit} bộ flashcard. Nâng cấp VIP để tạo thêm!`, 403);
+                } else {
+                    return error(res, `Bạn đã đạt giới hạn ${limit} bộ flashcard.`, 403);
+                }
+            }
         }
       
         const newSet = await FlashcardSet.create({
@@ -64,7 +70,12 @@ export const createFlashcard = async (req, res) => {
                     case 'premium': limit = 100; break;
                 }
             }
-            if (count >= limit) return error(res, `Bạn đã đạt giới hạn ${limit} flashcard. Nâng cấp VIP để tạo thêm!`, 403);        
+            if (count >= limit) {
+                const msg = limit < 100 
+                        ? `Bạn đã đạt giới hạn tạo ${limit} flashcard. Nâng cấp VIP để tạo thêm!` 
+                        : `Bạn đã đạt giới hạn tạo ${limit} flashcard.`;
+                    return error(res, msg, 403);
+            }        
         }
 
         const flashcard = await Flashcard.create({
