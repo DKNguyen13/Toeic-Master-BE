@@ -19,6 +19,14 @@ export function initChatbotSocket(io, options = {}) {
         })
         socket.on('message', async (message) => {
             try {
+                const trimmedMsg = message.trim().toLowerCase();
+                const skipMessages = ["hi", "xin chào", "hello", "chào", "hi bạn", "xin chào bạn", "hello bạn", "chào bạn", 
+                    "hi cậu", "xin chào cậu", "hello cậu", "chào cậu",
+                ];
+                if (skipMessages.some(msg => msg === trimmedMsg)) {
+                    socket.emit('response', "Xin chào! 😊 Chúc bạn 1 ngày mới tốt đẹp");
+                    return;
+                }
                 const packages = await getAllPackages();
                 const packageListText = packages
                     .map((pkg, index) =>
