@@ -49,6 +49,7 @@ await InitData.seedLessons();
 await InitData.seedFlashcards();
 //await InitData.seedRevenue();
 await InitData.syncMeiliUsersOnce();
+//await InitData.seedScoreMappings();
 
 app.listen(config.port, () => {
   console.log(`Server running on port ${config.port}`)
