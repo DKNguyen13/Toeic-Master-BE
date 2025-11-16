@@ -56,7 +56,6 @@ export const googleLogin = async (req, res) => {
         const { user, accessToken, refreshToken } = await AuthService.googleLoginService({ tokenId });
 
         if (!user.isActive) return error(res, "Tài khoản đã bị vô hiệu hóa!", 403);
-        await redisClient.set(`refreshToken:${user.id}`, refreshToken, { EX: 7*24*60*60 });
 
         // Set cookie refresh token
         res.cookie('refreshToken', refreshToken, {
