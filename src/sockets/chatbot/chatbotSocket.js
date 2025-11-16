@@ -29,10 +29,10 @@ export function initChatbotSocket(io, options = {}) {
             try {
                 const trimmedMsg = normalizeMessage(message);
                 const skipMessages = ["hi", "xin chào", "hello", "chào", "hi bạn", "xin chào bạn", "hello bạn", "chào bạn", 
-                    "hi cậu", "xin chào cậu", "hello cậu", "chào cậu",
+                    "hi cậu", "xin chào cậu", "hello cậu", "chào cậu", "cảm ơn", "cảm ơn cậu", "cảm ơn bạn", "cảm tạ", "cảm tạ cậu", "tuyệt vời", " tuyệt vời quá", "quá đã"
                 ];
                 if (skipMessages.some(msg => msg === trimmedMsg)) {
-                    socket.emit('response', "Xin chào! 😊 Chúc bạn 1 ngày mới tốt đẹp");
+                    socket.emit('response', "😊 Chúc bạn 1 ngày mới tốt đẹp");
                     return;
                 }
                 const packages = await getAllPackages();
