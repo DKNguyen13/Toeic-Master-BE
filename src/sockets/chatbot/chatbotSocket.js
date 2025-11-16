@@ -5,6 +5,14 @@ import { promptPrefix } from "../../utils/constant.js";
 import { getAllPackages } from "../../services/vipPackage.service.js";
 import { getLessonListText } from "../../controllers/lesson.controller.js"
 
+function normalizeMessage(msg) {
+  return msg
+    .toLowerCase()
+    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g,"")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function initChatbotSocket(io, options = {}) {
     const { geminiApiKey } = options;
     const onlineUsers = new Map();
@@ -19,6 +27,14 @@ export function initChatbotSocket(io, options = {}) {
         })
         socket.on('message', async (message) => {
             try {
+                const trimmedMsg = normalizeMessage(message);
+                const skipMessages = ["hi", "xin chào", "hello", "chào", "hi bạn", "xin chào bạn", "hello bạn", "chào bạn", 
+                    "hi cậu", "xin chào cậu", "hello cậu", "chào cậu",
+                ];
+                if (skipMessages.some(msg => msg === trimmedMsg)) {
+                    socket.emit('response', "Xin chào! 😊 Chúc bạn 1 ngày mới tốt đẹp");
+                    return;
+                }
                 const packages = await getAllPackages();
                 const packageListText = packages
                     .map((pkg, index) =>
