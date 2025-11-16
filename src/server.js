@@ -16,6 +16,7 @@ import partRouter from './routes/part.routes.js';
 import questionRouter from './routes/question.routes.js';
 import sessionRouter from './routes/session.routes.js';
 import flashcardRoutes from './routes/flashcard.routes.js';
+import analysis from './routes/analysis.route.js';
 import flashcardSetRoutes from './routes/flashcardSet.routes.js';
 import notificationRouter from './routes/notification.routes.js';
 
@@ -26,6 +27,8 @@ import NotificationService from "./services/notification.service.js";
 // socket
 import { Server } from "socket.io";
 import { initChatbotSocket } from './sockets/chatbot/chatbotSocket.js';
+import { analyzeResult } from './controllers/analysis.controller.js';
+
 const app = express()
 
 const corsOptions = {
@@ -54,6 +57,7 @@ app.use('/api/session', sessionRouter);
 app.use('/api/flashcard', flashcardRoutes);
 app.use('/api/flashcard-set', flashcardSetRoutes);
 app.use('/api/notifications', notificationRouter);
+app.use('/api/analysis', analysis);
 
 await connectDB();
 
