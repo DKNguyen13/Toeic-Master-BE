@@ -52,6 +52,10 @@ export const config = {
     // Gemini AI
     geminiApiKey: process.env.GEMINI_API_KEY,
 
+    // Ollama
+    ollamaApiKey: process.env.OLLAMA_API_KEY,
+    ollama_model: process.env.OLLAMA_MODEL,
+
     // Meilisearch
     meili_master_key: process.env.MEILI_MASTER_KEY,
     meili_host: process.env.MEILI_HOST,
