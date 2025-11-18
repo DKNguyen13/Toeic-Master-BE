@@ -1,7 +1,7 @@
 import express from 'express';
 
 import { authenticate } from '../middleware/authenticate.js';
-import { getSession, getSessionQuestions, getSessionResults, getUserSessions, getUserStatistics, pauseSession, resumeSession, startSession, submitAnswer, submitBulkAnswers, submitSession } from '../controllers/sessionController.js';
+import { getSession, getSessionQuestions, getSessionResults, getUserSessions, getUserStatistics, pauseSession, resumeSession, startSession, submitAnswer, submitBulkAnswers, submitSession } from '../controllers/session.controller.js';
 
 const router = express.Router();
 
