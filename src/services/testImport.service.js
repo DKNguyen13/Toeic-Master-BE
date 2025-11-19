@@ -21,7 +21,11 @@ const validateRowData = (row, rowIndex) => {
   if (!row.choiceA?.trim()) errors.push(`Row ${rowIndex}: choiceA is required`);
   if (!row.choiceB?.trim()) errors.push(`Row ${rowIndex}: choiceB is required`);
   if (!row.choiceC?.trim()) errors.push(`Row ${rowIndex}: choiceC is required`);
-  if (!row.choiceD?.trim()) errors.push(`Row ${rowIndex}: choiceD is required`);
+
+  // if part 2 skip choice D
+  if (row.partNumber !== 2) {
+    if (!row.choiceD?.trim()) errors.push(`Row ${rowIndex}: choiceD is required`);
+  }
 
   // Validate correctAnswer
   if (!['A', 'B', 'C', 'D'].includes(row.correctAnswer?.toUpperCase())) {
@@ -76,13 +80,33 @@ const getPartCategory = (partNumber) => {
  */
 const buildChoices = (row) => {
   const correctAnswer = row.correctAnswer.toUpperCase();
-  return [
+  const choices = [
     { label: 'A', text: row.choiceA.trim(), isCorrect: correctAnswer === 'A' },
     { label: 'B', text: row.choiceB.trim(), isCorrect: correctAnswer === 'B' },
     { label: 'C', text: row.choiceC.trim(), isCorrect: correctAnswer === 'C' },
-    { label: 'D', text: row.choiceD.trim(), isCorrect: correctAnswer === 'D' }
   ];
+
+  // Only add choice D if it exists (not for part 2)
+  if (row.choiceD) {
+    choices.push({
+      label: 'D',
+      text: row.choiceD.trim(),
+      isCorrect: correctAnswer === 'D'
+    });
+  }
+
+  return choices;
 };
+
+const splitImage = (imageString) => {
+  if (!imageString || typeof imageString !== 'string') {
+    return [];
+  }
+  return imageString
+    .split(',')
+    .map(url => url.trim())
+    .filter(url => url.length > 0);
+}
 
 /**
  * Main import function with transaction support
@@ -96,7 +120,7 @@ export const importTestFromExcel = async (filePath, testData, userId) => {
     if (!testData.title?.trim()) {
       throw new Error('Test title is required');
     }
-    
+
     if (!testData.audio?.trim()) {
       throw new Error('Test audio URL is required');
     }
@@ -188,7 +212,7 @@ export const importTestFromExcel = async (filePath, testData, userId) => {
             groupId: String(row.groupId).trim(),
             text: row.groupText?.trim() || '',
             audio: row.groupAudio?.trim() || '',
-            image: row.groupImage?.trim() || ''
+            image: splitImage(row.groupImage)
           };
         }
 
