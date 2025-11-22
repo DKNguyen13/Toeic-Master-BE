@@ -65,7 +65,7 @@ await InitData.createAdminIfNotExist();
 await InitData.seedPackages();
 await InitData.seedLessons();
 await InitData.seedFlashcards();
-//await InitData.seedRevenue();
+await InitData.seedLessons();
 await InitData.syncMeiliUsersOnce();
 
 const io = new Server(8081, {
