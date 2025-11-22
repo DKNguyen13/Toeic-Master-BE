@@ -267,6 +267,8 @@ export const updateProfileService = async ({ userId, fullname, dob, fileBuffer }
 export const changePasswordService = async ({ userId, oldPassword, newPassword }) => {
     const user = await User.findById(userId);
     if (!user) throw new Error('Người dùng không tồn tại');
+    
+    if (user.authType !== 'normal') throw new Error(`Tài khoản này đăng ký bằng ${user.authType}. Không thể đổi mật khẩu`);
 
     const isMatch = await bcrypt.compare(oldPassword, user.password);
     if (!isMatch) throw new Error('Mật khẩu cũ không đúng');
@@ -275,6 +277,5 @@ export const changePasswordService = async ({ userId, oldPassword, newPassword }
     user.password = hashedPassword;
 
     await user.save();
-
     return { message: 'Đổi mật khẩu thành công',};
 };
