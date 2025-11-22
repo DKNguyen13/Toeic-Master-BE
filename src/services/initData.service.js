@@ -38,6 +38,25 @@ export const testVIPExpiryNotification = async (notificationService) => {
 
 };
 
+// Resolve stale orders
+export const resolveStaleOrders = async () => {
+  try {
+    console.log("Resolving stale pending PaymentOrders...");
+    const THRESHOLD_MINUTES = 30;
+    const now = new Date();
+    const threshold = new Date(now - THRESHOLD_MINUTES * 60 * 1000);
+
+    const result = await PaymentOrder.updateMany(
+      { status: 'pending', createdAt: { $lt: threshold } },
+      { status: 'fail', isActive: false }
+    );
+
+    console.log(`Resolved ${result.modifiedCount} stale pending orders`);
+  } catch (err) {
+    console.error("Error resolving stale pending orders:", err);
+  }
+};
+
 // Seed revenue
 export const seedRevenue = async () => {
   const count = await PaymentOrder.countDocuments();
