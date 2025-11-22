@@ -385,7 +385,7 @@ export const seedLessons = async () => {
 
   const lessons = lessonFiles.map((file, index) => ({
     title: lessonTitles[index] || `Bài ${index + 1}`,
-    path: `src/resources/lessons/${file}`,
+    path: `src/storage/lessons/${file}`,
     content: ``,
     type: index < 5 ? "vocabulary" : "reading",
     views: Math.floor(Math.random() * (185 - 100 + 1)) + 100,
