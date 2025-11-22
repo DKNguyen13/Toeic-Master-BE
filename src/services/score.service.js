@@ -1,9 +1,6 @@
 import ScoreMapping from "../models/scoreMapping.model.js";
-
-
-
 // calculate session results
-const calculateSessionResults = async function (sessionId, userId) {
+export const calculateSessionResults = async function (sessionId, userId) {
     // Get UserAnswer with all questions
     const userAnswer = await UserAnswer.findOne({
         sessionId,
