@@ -46,7 +46,13 @@ export const getLessons = async (req, res) => {
     const query = { isDeleted: false };
     if (!req.user) query.accessLevel = "free";
 
-    const lessons = await Lesson.find(query);
+    let lessons = await Lesson.find(query);
+
+    lessons = lessons.sort((a, b) => {
+      const numA = parseInt(a.title.match(/\d+/)?.[0] || 0);
+      const numB = parseInt(b.title.match(/\d+/)?.[0] || 0);
+      return numA - numB;
+    });
     
     const lessonsWithFavorite = await Promise.all(
       lessons.map(async (lesson) => {
@@ -74,7 +80,13 @@ export const getLessons = async (req, res) => {
 // Get all lessons free excluding deleted ones
 export const getLessonsPublic = async (req, res) => {
   try {
-    const lessons = await Lesson.find({ isDeleted: false, accessLevel: "free" });
+    let lessons = await Lesson.find({ isDeleted: false, accessLevel: "free" });
+
+    lessons = lessons.sort((a, b) => {
+      const numA = parseInt(a.title.match(/\d+/)?.[0] || 0);
+      const numB = parseInt(b.title.match(/\d+/)?.[0] || 0);
+      return numA - numB;
+    });
 
     const lessonsWithFavorite = await Promise.all(
       lessons.map(async (lesson) => {
