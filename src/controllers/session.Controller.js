@@ -6,6 +6,7 @@ import Question from "../models/question.model.js";
 import UserTestSession from "../models/userTestSession.model.js";
 import UserAnswer from "../models/userAnswer.model.js";
 import { calculateSessionResults } from "../services/score.service.js";
+import * as sessionTestService from "../services/sessionTest/sessionTest.service.js";
 
 // [POST] /api/session/start
 export const startSession = async (req, res) => {
@@ -94,23 +95,16 @@ export const startSession = async (req, res) => {
 };
 
 // [GET] /api/session/:sessionId
-export const getSession = async (req, res) => {
+export const getTestSession = async (req, res) => {
     try {
         const { sessionId } = req.params;
         const userId = req.user.id;
 
-        const session = await UserTestSession.findOne({
-            _id: sessionId,
-            userId
-        }).populate('testId', 'title slug testCode audio');
+        const result = await sessionTestService.getTestSession(sessionId, userId);
 
-        if (!session) {
-            return error(res, 'Session not found');
-        }
-
-        return success(res, 'Get session success', { session });
+        return success(res, 'Lấy thành công thông tin phiên thi', { result });
     } catch (err) {
-        return error(res, 'Get session fail');
+        return error(res, 'Lấy thông tin phiên thi thất bại');
     }
 };
 
@@ -179,143 +173,6 @@ export const getSessionQuestions = async (req, res) => {
     }
 };
 
-// [POST] /api/session/:sessionId/answers
-export const submitAnswer = async (req, res) => {
-    try {
-        const { sessionId } = req.params;
-        const { questionId, selectedAnswer, timeSpent, isFlagged } = req.body;
-        const userId = req.user.id;
-
-        // Validate session
-        const session = await UserTestSession.findOne({
-            _id: sessionId,
-            userId,
-            status: { $in: ['started', 'in-progress', 'paused'] }
-        });
-
-        if (!session) {
-            return error(res, 'Session not found');
-        }
-
-        // Check session expired
-        if (new Date > session.expiredAt) {
-            await UserTestSession.findByIdAndUpdate(sessionId, {
-                status: 'timeout',
-                completedAt: new Date()
-            });
-
-            return error(res, 'Session has expired');
-        }
-
-        // Get question details
-        const question = await Question.findById(questionId);
-        if (!question) {
-            return error(res, 'Question not found');
-        }
-
-        const isCorrect = selectedAnswer === question.correctAnswer;
-        const isSkipped = !selectedAnswer;
-
-        // Get or create UserAnswer
-        let userAnswer = await UserAnswer.findOne({
-            sessionId,
-            userId
-        });
-
-        if (!userAnswer) {
-            // Create new UserAnswer
-            userAnswer = new UserAnswer({
-                sessionId,
-                userId,
-                testId: session.testId,
-                questions: []
-            });
-        }
-
-        // Check if answer already exists in array
-        const existingAnswerIndex = userAnswer.questions.findIndex(
-            q => q.questionId.toString() === questionId
-        );
-
-        const answerData = {
-            questionId,
-            questionNumber: question.questionNumber,
-            selectedAnswer: selectedAnswer || null,
-            isCorrect,
-            timeSpent: timeSpent || 0,
-            isSkipped,
-            isFlagged: isFlagged || false
-        };
-
-        if (existingAnswerIndex !== -1) {
-            //Update existing answer in array
-            const existingAnswer = userAnswer.questions[existingAnswerIndex];
-
-            // Update question satistics
-            if (existingAnswer.isCorrect !== isCorrect) {
-                if (isCorrect) {
-                    await Question.findByIdAndUpdate(questionId, {
-                        $inc: { 'statistics.correctCount': 1 }
-                    });
-                }
-                else if (existingAnswer.isCorrect) {
-                    await Question.findByIdAndUpdate(questionId, {
-                        $inc: { 'statistics.correctCount': -1 }
-                    })
-                }
-            }
-            //Update answer in array
-            userAnswer.questions[existingAnswerIndex] = {
-                ...existingAnswer,
-                selectedAnswer: answerData.selectedAnswer,
-                isCorrect: answerData.isCorrect,
-                timeSpent: existingAnswer.timeSpent + (timeSpent || 0),
-                isSkipped: answerData.isSkipped,
-                isFlagged: answerData.isFlagged
-            };
-        }
-        else {
-            // Add new answer to array
-            userAnswer.questions.push(answerData);
-
-            // Update question statistics
-            await Question.findByIdAndUpdate(questionId, {
-                $inc: {
-                    'statistics.totalAnswered': 1,
-                    'statistics.correctCount': isCorrect ? 1 : 0
-                }
-            });
-        }
-
-        await userAnswer.save();
-
-        //Update session progress
-        const answeredCount = userAnswer.questions.filter(q => !q.isSkipped).length;
-        await UserTestSession.findByIdAndUpdate(sessionId, {
-            'progress.answeredCount': answeredCount,
-            'progress.completionPercentage': Math.round((answeredCount / session.progress.totalQuestions) * 100),
-            status: 'in-progress'
-        })
-
-        return success(
-            res,
-            'Answer submitted successfully',
-            {
-                questionId,
-                isCorrect,
-                isSkipped,
-                progress: {
-                    answeredCount,
-                    totalQuestions: session.progress.totalQuestions,
-                    completionPercentage: Math.round((answeredCount / session.progress.totalQuestions) * 100)
-                }
-            }
-        );
-    } catch (err) {
-        return error(res, 'Error submitting answer');
-    }
-};
-
 // [POST] /api/session/:sessionId/answers/bulk --Submit multiple answers at once
 export const submitBulkAnswers = async (req, res) => {
     try {
@@ -324,114 +181,10 @@ export const submitBulkAnswers = async (req, res) => {
         const userId = req.user.id;
 
         if (!Array.isArray(answers) || answers.length === 0) {
-
             return error(res, 'Answers array is required and must not be empty');
         }
 
-        // Validate session
-        const session = await UserTestSession.findOne({
-            _id: sessionId,
-            userId,
-            status: { $in: ['started', 'in-progress', 'paused'] }
-        });
-
-        if (!session) {
-            return error(res, 'Active session not found');
-        }
-
-        // Get all questions for validation
-        const questionIds = answers.map(a => a.questionId);
-        const questions = await Question.find({
-            _id: { $in: questionIds }
-        });
-
-        const questionMap = {};
-        questions.forEach(q => {
-            questionMap[q._id.toString()] = q;
-        });
-
-        // Get or create UserAnswer document
-        let userAnswer = await UserAnswer.findOne({
-            sessionId,
-            userId
-        });
-
-        if (!userAnswer) {
-            userAnswer = new UserAnswer({
-                sessionId,
-                userId,
-                testId: session.testId,
-                questions: []
-            });
-        }
-
-        // Process all answers
-        const processedAnswers = [];
-
-        for (const answer of answers) {
-            const question = questionMap[answer.questionId];
-            if (!question) continue;
-
-            const isCorrect = answer.selectedAnswer === question.correctAnswer;
-            const isSkipped = answer.selectedAnswer === null || answer.selectedAnswer === undefined;
-
-            const existingAnswerIndex = userAnswer.questions.findIndex(
-                q => q.questionId.toString() === answer.questionId
-            );
-
-            const answerData = {
-                questionId: answer.questionId,
-                questionNumber: question.globalQuestionNumber,            // per-part index
-                globalQuestionNumber: question.globalQuestionNumber, // global index (important)
-                partNumber: question.partNumber,
-                selectedAnswer: answer.selectedAnswer || null,
-                isCorrect,
-                timeSpent: answer.timeSpent || 0,
-                isSkipped,
-                isFlagged: answer.isFlagged || false
-            };
-
-            if (existingAnswerIndex !== -1) {
-                // Update existing answer
-                userAnswer.questions[existingAnswerIndex] = {
-                    ...userAnswer.questions[existingAnswerIndex],
-                    ...answerData,
-                    timeSpent: (userAnswer.questions[existingAnswerIndex].timeSpent || 0) + (answer.timeSpent || 0)
-                };
-            } else {
-                // Add new answer
-                userAnswer.questions.push(answerData);
-            }
-
-            processedAnswers.push({
-                questionId: answer.questionId,
-                isCorrect,
-                isSkipped
-            });
-        }
-
-        await userAnswer.save();
-
-        // Update session progress
-        const answeredCount = userAnswer.questions.filter(q => !q.isSkipped).length;
-        await UserTestSession.findByIdAndUpdate(sessionId, {
-            'progress.answeredCount': answeredCount,
-            'progress.completionPercentage': Math.round((answeredCount / session.progress.totalQuestions) * 100),
-            status: 'in-progress'
-        });
-
-        return success(
-            res,
-            `${answers.length} answers submitted successfully`,
-            {
-                processedAnswers,
-                progress: {
-                    answeredCount,
-                    totalQuestions: session.progress.totalQuestions,
-                    completionPercentage: Math.round((answeredCount / session.progress.totalQuestions) * 100)
-                }
-            }
-        );
+        await sessionTestService.submitBulkAnswers(sessionId, userId, answers);
 
     } catch (err) {
         return error(res, 'Error submitting bulk answers', err.message);
@@ -459,8 +212,8 @@ export const submitSession = async (req, res) => {
             testId: session.testId,
             partNumber: { $in: session.testConfig.selectedParts }
         })
-            .sort({ partNumber: 1, questionNumber: 1 })
-            .select('content choices questionNumber globalQuestionNumber partNumber');
+        .sort({ partNumber: 1, questionNumber: 1 })
+        .select('content choices questionNumber globalQuestionNumber partNumber');
 
         // --- Step 2: Lấy hoặc tạo UserAnswer ---
         let userAnswer = await UserAnswer.findOne({ sessionId, userId });
