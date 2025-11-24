@@ -9,7 +9,7 @@ import { verifyRefreshToken, generateAccessToken } from '../utils/jwt.js';
 
 // Admin Login
 export const adminLogin = async (req, res) => {
-        try {
+    try {
         const { user, accessToken, refreshToken } = await AuthService.adminLoginService(req.body);
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
@@ -56,7 +56,6 @@ export const googleLogin = async (req, res) => {
         const { user, accessToken, refreshToken } = await AuthService.googleLoginService({ tokenId });
 
         if (!user.isActive) return error(res, "Tài khoản đã bị vô hiệu hóa!", 403);
-        await redisClient.set(`refreshToken:${user.id}`, refreshToken, { EX: 7*24*60*60 });
 
         // Set cookie refresh token
         res.cookie('refreshToken', refreshToken, {
@@ -85,7 +84,6 @@ export const register = async (req, res) => {
     }
     catch (err) {
         console.log("Register fail:", err.message);
-
         return error(res, err.message, 400);
     }
 };
@@ -111,6 +109,22 @@ export const sendRegiOTP = async (req, res) => {
     } catch (err) {
         console.log("Send register OTP fail:", err.message);
         return error(res, err.message, 400, { cooldown: err.ttl || 0 });
+    }
+};
+
+// Send support email
+export const sendSupportEmail = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const user = await userModel.findById(userId).select("email");
+        if (!user) return error(res, "Người dùng không tồn tại", 404);
+
+        const { name, title, content } = req.body;
+        const result = await AuthService.sendSupportEmailService(user.email, name, title, content);
+        return success(res, result.message);
+    } catch (err) {
+        console.log("Send support email fail:", err.message);
+        return error(res, err.message, 400);
     }
 };
 

@@ -5,7 +5,7 @@ import { config } from '../config/env.config.js';
 import { OAuth2Client } from "google-auth-library";
 import redisClient from '../config/redis.config.js';
 import { uploadAvatar } from './cloudinary.service.js';
-import { sendOTPEmail, sendResetPasswordEmail } from './mail.service.js';
+import { sendOTPEmail, sendResetPasswordEmail, sendSupportEmail } from './mail.service.js';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt.js';
 
 const client = new OAuth2Client(config.googleClientId);
@@ -24,6 +24,8 @@ export const adminLoginService = async ({ email, password }) => {
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) throw new Error('Mật khẩu không đúng');
+    
+    await user.checkVipStatus();
 
     const payload = { id: user._id, role: user.role };
     const accessToken = generateAccessToken(payload);
@@ -44,9 +46,11 @@ export const normalLoginService = async ({ email, password }) => {
     if (!user.isActive) throw new Error('Tài khoản bị vô hiệu hóa!');
     if (user.authType !== 'normal') throw new Error(`Tài khoản này đăng ký bằng ${user.authType}. Vui lòng đăng nhập bằng Google.`);
     if (user.role !== 'user') throw new Error('Hệ thống đang bảo trì! Vui lòng thử lại sau.');
-
+    
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) throw new Error('Mật khẩu không đúng');
+
+    await user.checkVipStatus();
 
     const payload = { id: user._id, role: user.role };
     const accessToken = generateAccessToken(payload);
@@ -84,7 +88,7 @@ export const googleLoginService = async ({ tokenId }) => {
         });
         await user.save();
     }
-
+    await user.checkVipStatus();
     const payload = { id: user._id, role: user.role };
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
@@ -100,7 +104,6 @@ export const googleLoginService = async ({ tokenId }) => {
     };
     
     await redisClient.set(`refreshToken:${user.id}`, refreshToken, { EX: 7*24*60*60 });
-
     return { user: safeUser, accessToken, refreshToken };
 };
 
@@ -115,7 +118,11 @@ export const registerService = async ({ fullname, email, password, phone, dob, a
     if (phone && await User.findOne({ phone })) throw new Error('Số điện thoại đã tồn tại!');
 
     if (!fullname || !fullNameRegex.test(fullname)) throw new Error('Họ tên chứa ký tự không hợp lệ!');
-    
+
+    if (fullname.length > 30) throw new Error("Họ tên không được vượt quá 30 ký tự!");
+    if (email.length > 40) throw new Error("Email không được vượt quá 40 ký tự!");
+    if (password.length > 50) throw new Error("Mật khẩu không được vượt quá 50 ký tự!");
+
     let dobDate = null;
     if (dob) {
         const [day, month, year] = dob.split('/');
@@ -164,9 +171,7 @@ export const sendOTPService = async (email) => {
     if (!email) throw new Error('Vui lòng nhập email!');
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-        throw new Error('Email không hợp lệ!');
-    }
+    if (!emailRegex.test(email)) throw new Error('Email không hợp lệ!');
 
     const user = await User.findOne({ email });
     if (!user) throw new Error('Email không tồn tại!');
@@ -182,13 +187,20 @@ export const sendOTPService = async (email) => {
 
     const newPassword = crypto.randomBytes(4).toString('hex');
     user.password = await bcrypt.hash(newPassword, await bcrypt.genSalt(10));
+
     await user.save();
-
     await sendResetPasswordEmail(email, `Mật khẩu mới của bạn là: ${newPassword}`);
-
     await redisClient.setEx(`reset:${email}`, 60, 'sent');
-
     return { message: 'Mật khẩu mới đã được gửi tới email của bạn!', cooldown: 60 };
+};
+
+// Send support email
+export const sendSupportEmailService = async (to, userName, issueTitle, issueContent) => {
+    if( !to || !userName || !issueTitle || !issueContent ) {
+        throw new Error('Vui lòng điền đầy đủ thông tin!');
+    }
+    await sendSupportEmail(to, userName, issueTitle, issueContent);
+    return { message: 'Gửi yêu cầu hỗ trợ thành công! Vui lòng kiểm tra mail trong vòng 24h.' };
 };
 
 //Reset password
@@ -255,6 +267,8 @@ export const updateProfileService = async ({ userId, fullname, dob, fileBuffer }
 export const changePasswordService = async ({ userId, oldPassword, newPassword }) => {
     const user = await User.findById(userId);
     if (!user) throw new Error('Người dùng không tồn tại');
+    
+    if (user.authType !== 'normal') throw new Error(`Tài khoản này đăng ký bằng ${user.authType}. Không thể đổi mật khẩu`);
 
     const isMatch = await bcrypt.compare(oldPassword, user.password);
     if (!isMatch) throw new Error('Mật khẩu cũ không đúng');
@@ -263,6 +277,5 @@ export const changePasswordService = async ({ userId, oldPassword, newPassword }
     user.password = hashedPassword;
 
     await user.save();
-
     return { message: 'Đổi mật khẩu thành công',};
 };

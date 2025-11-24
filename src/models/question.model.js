@@ -31,10 +31,12 @@ const questionSchema = new mongoose.Schema({
         groupId: { type: String, index: true },
         text: { type: String, trim: true, default: "" },
         audio: { type: String, trim: true, default: "" },
-        image: { type: String, trim: true, default: "" },
+        image: [{
+            type: String, trim: true
+        }],
     },
 
-    question: { type: String,  trim: true, default: "" },
+    question: { type: String, trim: true, default: "" },
     choices: [{
         label: {
             type: String,

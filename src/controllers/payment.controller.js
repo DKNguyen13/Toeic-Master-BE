@@ -117,6 +117,10 @@ export const returnPayment = async (req, res) => {
     const order = await PaymentOrder.findOne({ orderId });
     if (!order) return res.redirect(`${config.frontendUrl}${config.paymentFailPath}`);
 
+    if (order.status === "success") {
+      return res.redirect(`${config.frontendUrl}${config.paymentSuccessPath}`);
+    }
+
     if (secureHash !== signed || vnp_Params.vnp_ResponseCode !== "00") {
       await PaymentOrder.findOneAndUpdate({ orderId }, { status: "fail", isActive: false });
       return res.redirect(`${config.frontendUrl}${config.paymentFailPath}`);

@@ -19,6 +19,13 @@ const getLessonContent = (lesson) => {
   return "<h1>Chưa có dữ liệu</h1>";
 };
 
+// Get all lesson free list text
+export const getLessonListText = async () => {
+    const lessons = await Lesson.find({ isDeleted: false, accessLevel: "free" });
+    if (!lessons || lessons.length === 0) return "Hiện tại chưa có bài học miễn phí nào.";
+    return lessons.map((lesson, index) => `${index + 1}. ${lesson.title}`).join("\n");
+}
+
 // Create lesson
 export const createLesson = async (req, res) => {
   try {
@@ -39,7 +46,13 @@ export const getLessons = async (req, res) => {
     const query = { isDeleted: false };
     if (!req.user) query.accessLevel = "free";
 
-    const lessons = await Lesson.find(query);
+    let lessons = await Lesson.find(query);
+
+    lessons = lessons.sort((a, b) => {
+      const numA = parseInt(a.title.match(/\d+/)?.[0] || 0);
+      const numB = parseInt(b.title.match(/\d+/)?.[0] || 0);
+      return numA - numB;
+    });
     
     const lessonsWithFavorite = await Promise.all(
       lessons.map(async (lesson) => {
@@ -67,7 +80,13 @@ export const getLessons = async (req, res) => {
 // Get all lessons free excluding deleted ones
 export const getLessonsPublic = async (req, res) => {
   try {
-    const lessons = await Lesson.find({ isDeleted: false, accessLevel: "free" });
+    let lessons = await Lesson.find({ isDeleted: false, accessLevel: "free" });
+
+    lessons = lessons.sort((a, b) => {
+      const numA = parseInt(a.title.match(/\d+/)?.[0] || 0);
+      const numB = parseInt(b.title.match(/\d+/)?.[0] || 0);
+      return numA - numB;
+    });
 
     const lessonsWithFavorite = await Promise.all(
       lessons.map(async (lesson) => {
@@ -162,9 +181,11 @@ export const updateLesson = async (req, res) => {
       req.body,
       { new: true }
     );
+    
     if (!lesson) return error(res, "Lesson không tìm thấy", 404);
     const favoriteCount = await Wishlist.countDocuments({ lesson: lesson._id });
     let isFavorite = false;
+    
     if (req.user) {
       const exists = await Wishlist.exists({ user: req.user._id, lesson: lesson._id });
       isFavorite = !!exists;
