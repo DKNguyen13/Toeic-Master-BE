@@ -16,7 +16,7 @@ const scoreMappingSchema = new mongoose.Schema(
         scaledScore: {
             type: Number,
             required: true,
-            min: 5,
+            min: 0,
             max: 495,
         },
         version: {

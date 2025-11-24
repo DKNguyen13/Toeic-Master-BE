@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { SESSION_STATUS, SESSION_TYPE } from "../constants/sessionTest.constants.js";
 
 const userTestSessionSchema = new mongoose.Schema({
     sessionCode: {
@@ -18,7 +19,7 @@ const userTestSessionSchema = new mongoose.Schema({
     },
     sessionType: {
         type: String,
-        enum: ['practice', 'full-test'],
+        enum: Object.values(SESSION_TYPE),
         required: true
     },
     testConfig: {
@@ -42,7 +43,7 @@ const userTestSessionSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['started', 'in-progress', 'paused', 'completed', 'abandoned', 'timeout'],
+        enum: Object.values(SESSION_STATUS),
         default: 'started'
     },
     startedAt: {
@@ -110,10 +111,21 @@ userTestSessionSchema.pre('validate', function (next) {
         const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
         this.sessionCode = `S-${date}-${random}`;
 
-        // Set expiration time
-        this.expiredAt = new Date(this.startedAt.getTime() + (this.testConfig.timeLimit * 60 * 1000));
+        // Set expiration time 7 days
+        const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+        this.expiredAt = new Date(this.startedAt.getTime() + SEVEN_DAYS_MS);
     }
     next();
 });
+
+// method update when submit test session
+userTestSessionSchema.methods.completeTestSession = function (results) {
+    this.status = SESSION_STATUS.COMPLETED;
+    this.completedAt = new Date();
+    this.submittedAt = new Date();
+    this.timeSpent = Math.floor((Date.now() - this.startedAt.getTime()) / 1000);
+    this.results = results;
+    return this.save();
+};
 
 export default mongoose.model('UserTestSession', userTestSessionSchema);
