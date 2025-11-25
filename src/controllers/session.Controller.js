@@ -1,11 +1,7 @@
 import { success, error } from '../utils/response.js';
 
-import User from "../models/user.model.js";
-import Test from "../models/test.model.js";
-import Question from "../models/question.model.js";
 import UserTestSession from "../models/userTestSession.model.js";
 import UserAnswer from "../models/userAnswer.model.js";
-import { calculateSessionResults } from "../services/score.service.js";
 import * as sessionTestService from "../services/sessionTest/sessionTest.service.js";
 
 // [POST] /api/session/start
@@ -14,80 +10,9 @@ export const startSession = async (req, res) => {
         const { testId, sessionType, selectedParts, timeLimit } = req.body;
         const userId = req.user.id; // duoc gan them tu middeware
 
-        // Validate test exists
-        const test = await Test.findById(testId);
-
-        if (!test || !test.isActive) {
-            return error(res, 'Đề thi không tồn tại hoặc đã bị xóa', 500);
-        }
-
-        // Check for active sessions
-        const activeSession = await UserTestSession.findOne({
-            userId,
-            testId,
-            status: { $in: ['started', 'in-progress', 'paused'] }
-        });
-
-        if (activeSession) {
-            return error(res, 'You already have an active session for this test', 500);
-        }
-
-        // Detemine parts to include
-        let parts = selectedParts;
-        if (sessionType === 'full-test') {
-            parts = [1, 2, 3, 4, 5, 6, 7];
-        }
-
-        // Get total questions count
-        const totalQuestions = await Question.countDocuments({
-            testId,
-            partNumber: { $in: parts }
-        });
-
-        if (totalQuestions === 0) {
-            return error(res, 'Đề thi hiện tại chưa cập nhật câu hỏi, vui lòng chọn đề thi khác để luyện tập');
-        }
-
-        // Create session
-        const session = new UserTestSession({
-            userId,
-            testId,
-            sessionType,
-            testConfig: {
-                selectedParts: parts,
-                timeLimit: timeLimit || 0,
-                allowReview: true
-            },
-            progress: {
-                totalQuestions,
-                answeredCount: 0,
-                completionPercentage: 0
-            }
-        });
-
-        await session.save();
-
-        // Create UserAnswer with empty questions array
-        const userAnswer = new UserAnswer({
-            sessionId: session._id,
-            userId,
-            testId,
-            questions: []
-        });
-
-        // Update test statistics
-        await Test.findByIdAndUpdate(testId, {
-            $inc: { 'statistics.totalAttempts': 1 }
-        });
-
-        return success(res, 'Test session started successfully', {
-            id: session._id,
-            sessionCode: session.sessionCode,
-            sessionType: session.sessionType,
-            testConfig: session.testConfig,
-            progress: session.progress,
-            expiredAt: session.expiredAt,
-            totalQuestions
+        const session = await sessionTestService.startTestSession(userId, { testId, sessionType, selectedParts, timeLimit });
+        return success(res, 'Tạo phiên thi thành công', {
+            id: session
         });
     } catch (err) {
         return error(res, 'Error starting session', 500, err.message);
@@ -108,76 +33,12 @@ export const getTestSession = async (req, res) => {
     }
 };
 
-// [GET] /api/session/:sessionId/questions
-export const getSessionQuestions = async (req, res) => {
-    try {
-        const { sessionId } = req.params;
-        const userId = req.user.id;
-
-        const session = await UserTestSession.findOne({
-            _id: sessionId,
-            userId,
-            status: { $in: ['started', 'in-progress', 'paused'] }
-        });
-
-        if (!session) {
-            return error(res, 'Active session not found');
-        }
-
-        // Get all questions for this session
-        let questions = await Question.find({
-            testId: session.testId,
-            partNumber: { $in: session.testConfig.selectedParts }
-        })
-            .sort({ globalQuestionNumber: 1 })
-            .select('question group choices questionNumber globalQuestionNumber partNumber');
-
-        // Get exists answers from UserAnswer
-        const userAnswer = await UserAnswer.findOne({
-            sessionId,
-            userId
-        }).select('questionId selectedAnswer timeSpent isSkipped isFlagged');
-
-        // Map answers to questions
-        const answerMap = {};
-        if (userAnswer && userAnswer.questions) {
-            userAnswer.questions.forEach(answer => {
-                answerMap[answer.questionId.toString()] = {
-                    selectedAnswer: answer.selectedAnswer,
-                    timeSpent: answer.timeSpent,
-                    isSkipped: answer.isSkipped,
-                    isFlagged: answer.isFlagged
-                };
-            });
-        }
-
-        // Merge questions with user answers
-        const questionsWithAnswers = questions.map(question => ({
-            ...question.toObject(),
-            userAnswer: answerMap[question._id.toString()] || null
-        }));
-
-        return success(res, 'Fetching session questions successfully', {
-            questions: questionsWithAnswers,
-            session: {
-                id: session._id,
-                sessionCode: session.sessionCode,
-                testConfig: session.testConfig,
-                progress: session.progress,
-                timeRemaining: Math.max(0, session.expiredAt.getTime() - Date.now())
-            }
-        });
-
-    } catch (err) {
-        return error(res, 'Error fetching session questions');
-    }
-};
-
 // [POST] /api/session/:sessionId/answers/bulk --Submit multiple answers at once
 export const submitBulkAnswers = async (req, res) => {
     try {
         const { sessionId } = req.params;
         const { answers } = req.body; // Array of { questionId, selectedAnswer, timeSpent, isFlagged }
+
         const userId = req.user.id;
 
         if (!Array.isArray(answers) || answers.length === 0) {
@@ -185,9 +46,11 @@ export const submitBulkAnswers = async (req, res) => {
         }
 
         await sessionTestService.submitBulkAnswers(sessionId, userId, answers);
+        return success(res, 'Nộp câu hỏi trong phiên thi thành công');
 
     } catch (err) {
-        return error(res, 'Error submitting bulk answers', err.message);
+        console.log('Lỗi khi nộp bài', err);
+        return error(res, `Lỗi nộp bài: ${err.message}`, 500);
     }
 };
 
@@ -197,89 +60,8 @@ export const submitSession = async (req, res) => {
         const { sessionId } = req.params;
         const userId = req.user.id;
 
-        const session = await UserTestSession.findOne({
-            _id: sessionId,
-            userId,
-            status: { $in: ['started', 'in-progress', 'paused'] }
-        });
-
-        if (!session) {
-            return error(res, 'Sesion not found');
-        }
-
-        // --- Step 1: Lấy tất cả câu hỏi của session ---
-        const questions = await Question.find({
-            testId: session.testId,
-            partNumber: { $in: session.testConfig.selectedParts }
-        })
-        .sort({ partNumber: 1, questionNumber: 1 })
-        .select('content choices questionNumber globalQuestionNumber partNumber');
-
-        // --- Step 2: Lấy hoặc tạo UserAnswer ---
-        let userAnswer = await UserAnswer.findOne({ sessionId, userId });
-        if (!userAnswer) {
-            userAnswer = new UserAnswer({
-                sessionId,
-                userId,
-                testId: session.testId,
-                questions: []
-            });
-        }
-
-        const answeredIds = new Set(userAnswer.questions.map(q => q.questionId.toString()));
-
-        // --- Step 3: Thêm các câu chưa trả lời ---
-        for (const question of questions) {
-            if (!answeredIds.has(question._id.toString())) {
-                userAnswer.questions.push({
-                    questionId: question._id,
-                    questionNumber: question.globalQuestionNumber,
-                    globalQuestionNumber: question.globalQuestionNumber,
-                    partNumber: question.partNumber,
-                    selectedAnswer: null,
-                    isSkipped: true,
-                    isCorrect: false,
-                    timeSpent: 0,
-                    isFlagged: false
-                });
-
-            }
-        }
-        await userAnswer.save();
-
-        // Calculate results
-        const results = await calculateSessionResults(sessionId, userId);
-
-        // Update session
-        session.status = 'completed';
-        session.completedAt = new Date();
-        session.submittedAt = new Date();
-        session.timeSpent = Math.floor((Date.now() - session.startedAt.getTime()) / 1000);
-        session.results = results;
-
-        await session.save();
-
-        // Update test statistics
-        await Test.findByIdAndUpdate(session.testId, {
-            $inc: { 'statistics.completedAttempts': 1 }
-        });
-
-        // Update user statistics
-        const user = await User.findById(userId);
-        if (results.totalScore) {
-            await user.updateStatistics(results);
-        }
-
-        return success(
-            res,
-            'Session submitted successfully',
-            {
-                sessionId,
-                sessionCode: session.sessionCode,
-                results
-            }
-        );
-
+        await sessionTestService.submitTestSession(sessionId, userId);
+        return success(res, 'Nộp bài thành công');
     } catch (err) {
 
         return error(res, 'Error submitting session', 500, err.message);
@@ -305,7 +87,7 @@ export const pauseSession = async (req, res) => {
         );
 
         if (!session) {
-            return error(res,'Không tìm thấy phiên làm bài');
+            return error(res, 'Không tìm thấy phiên làm bài');
         }
 
         res.status(200).json({
