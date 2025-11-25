@@ -1,4 +1,6 @@
 import ScoreMapping from "../models/scoreMapping.model.js";
+import UserAnswer from "../models/userAnswer.model.js";
+import UserTestSession from "../models/userTestSession.model.js";
 // calculate session results
 export const calculateSessionResults = async function (sessionId, userId) {
     // Get UserAnswer with all questions

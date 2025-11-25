@@ -3,7 +3,7 @@ import express from 'express';
 import { authenticate } from '../middleware/authenticate.js';
 
 import {
-    getTestSession, getSessionQuestions, getSessionResults, getUserSessions,
+    getTestSession, getSessionResults, getUserSessions,
     getUserStatistics, pauseSession, resumeSession, startSession,
     submitBulkAnswers, submitSession
 } from '../controllers/session.Controller.js';
@@ -17,7 +17,6 @@ router.post("/start", startSession);
 router.get('/user', getUserSessions);
 router.get('/user/statistics', getUserStatistics);
 router.get('/:sessionId', getTestSession);
-router.get('/:sessionId/questions', getSessionQuestions);
 router.post('/:sessionId/answers/bulk', submitBulkAnswers);
 router.post('/:sessionId/submit', submitSession);
 router.put('/:sessionId/pause', pauseSession);

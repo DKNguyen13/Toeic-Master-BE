@@ -3,6 +3,7 @@ import User from "../../models/user.model.js";
 import Test from "../../models/test.model.js";
 import Question from "../../models/question.model.js";
 import UserAnswer from "../../models/userAnswer.model.js";
+import { calculateSessionResults } from "../score.service.js";
 
 import {
     SESSION_TYPE,
@@ -61,6 +62,8 @@ export const startTestSession = async (userId, { testId, sessionType, selectedPa
     await Test.findByIdAndUpdate(testId, {
         $inc: { 'statistics.totalAttempts': 1 }
     });
+
+    return session._id;
 };
 
 export const getTestSession = async (sessionId, userId) => {
