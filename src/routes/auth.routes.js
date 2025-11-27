@@ -26,5 +26,6 @@ router.patch('/update-profile', authenticate, upload.single('avatar'), authContr
 router.get('/profile', authenticate, authController.getProfile);
 router.get('/check-role', authController.checkRole);
 router.get('/purchase-history', authenticate, getUserPurchaseHistory);
+router.get('/check-vip', authenticate, authController.checkPremiumAccess);
 
 export default router;
