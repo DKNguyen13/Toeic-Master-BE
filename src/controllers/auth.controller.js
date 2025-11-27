@@ -237,6 +237,28 @@ export const getProfile = async (req, res) => {
     }
 };
 
+// Check VIP access for a premium feature
+export const checkPremiumAccess = [authenticate, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const user = await userModel.findById(userId).select("premium");
+
+        if (!user) return error(res, "Người dùng không tồn tại", 404);
+
+        const now = new Date();
+        const hasVip = user.vip.isActive && user.vip.endDate && user.vip.endDate > now;
+
+        if (hasVip) {
+            return success(res, "Bạn có quyền truy cập Premium", { access: true, vip: user.vip });
+        } else {
+            return error(res, "Bạn cần gói Premium để truy cập tính năng này", 403, { access: false, vip: user.vip });
+        }
+    } catch (err) {
+        console.error("Check Premium access error:", err.message);
+        return error(res, "Lỗi kiểm tra Premium", 500);
+    }
+}];
+
 // Check role
 export const checkRole = [authenticate, (req, res) => {
     try {
