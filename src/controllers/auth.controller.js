@@ -241,12 +241,13 @@ export const getProfile = async (req, res) => {
 export const checkPremiumAccess = [authenticate, async (req, res) => {
     try {
         const userId = req.user.id;
-        const user = await userModel.findById(userId).select("premium");
+        const user = await userModel.findById(userId).select("vip");
 
         if (!user) return error(res, "Người dùng không tồn tại", 404);
 
+        const { vip } = user;
         const now = new Date();
-        const hasVip = user.vip.isActive && user.vip.endDate && user.vip.endDate > now;
+        const hasVip = user.vip.isActive && user.vip.endDate && user.vip.endDate > now && vip.type === "premium";
 
         if (hasVip) {
             return success(res, "Bạn có quyền truy cập Premium", { access: true, vip: user.vip });
