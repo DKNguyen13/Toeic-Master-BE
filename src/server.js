@@ -19,6 +19,7 @@ import flashcardRoutes from './routes/flashcard.routes.js';
 import analysis from './routes/analysis.route.js';
 import flashcardSetRoutes from './routes/flashcardSet.routes.js';
 import notificationRouter from './routes/notification.routes.js';
+import fillBlankQuestionRouter from './routes/fillBlankQuestion.routes.js';
 
 // Services
 import * as InitData from './services/initData.service.js';
@@ -27,7 +28,7 @@ import NotificationService from "./services/notification.service.js";
 // socket
 import { Server } from "socket.io";
 import { initChatbotSocket } from './sockets/chatbot/chatbotSocket.js';
-import { analyzeResult } from './controllers/analysis.controller.js';
+
 
 const app = express()
 
@@ -58,6 +59,7 @@ app.use('/api/flashcard', flashcardRoutes);
 app.use('/api/flashcard-set', flashcardSetRoutes);
 app.use('/api/notifications', notificationRouter);
 app.use('/api/analysis', analysis);
+app.use('/api/practice', fillBlankQuestionRouter);
 
 await connectDB();
 
@@ -67,7 +69,7 @@ await InitData.seedLessons();
 await InitData.seedFlashcards();
 await InitData.seedLessons();
 await InitData.syncMeiliUsersOnce();
-//await InitData.seedScoreMappings();
+await InitData.initListeningQuestions();
 await InitData.resolveStaleOrders();
 
 const io = new Server(8081, {
