@@ -10,4 +10,7 @@ const ListeningQuestionSchema = new mongoose.Schema({
   blanks: [BlankSchema]
 }, { timestamps: true });
 
+ListeningQuestionSchema.index({ "blanks.answer": 1 });
+ListeningQuestionSchema.index({ sentence: "text" });
+
 export default mongoose.model("ListeningQuestion", ListeningQuestionSchema);
