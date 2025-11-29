@@ -1,20 +1,13 @@
 import mongoose from "mongoose";
-const { Schema } = mongoose;
 
-const BlankSchema = new Schema({
-  position: { type: Number, required: true },
-  answer: { type: String, required: true }
-});
+const BlankSchema = new mongoose.Schema({
+  position: Number,
+  answer: String
+}, { _id: false });
 
-const ListeningQuestionSchema = new Schema({
-  sentence: { type: String, required: true },
-  blanks: { type: [BlankSchema], required: true },
-  createdAt: { type: Date, default: Date.now }
-});
+const ListeningQuestionSchema = new mongoose.Schema({
+  sentence: String,
+  blanks: [BlankSchema]
+}, { timestamps: true });
 
-const ListeningQuestion = mongoose.model(
-  "ListeningQuestion",
-  ListeningQuestionSchema
-);
-
-export default ListeningQuestion;
+export default mongoose.model("ListeningQuestion", ListeningQuestionSchema);
