@@ -24,7 +24,7 @@ import fillBlankQuestionRouter from './routes/fillBlankQuestion.routes.js';
 // Services
 import * as InitData from './services/initData.service.js';
 import NotificationService from "./services/notification.service.js";
-
+import {generateExcelFile} from './services/xxx.js';
 // socket
 import { Server } from "socket.io";
 import { initChatbotSocket } from './sockets/chatbot/chatbotSocket.js';
@@ -71,7 +71,7 @@ await InitData.seedLessons();
 await InitData.syncMeiliUsersOnce();
 await InitData.initListeningQuestions();
 await InitData.resolveStaleOrders();
-
+await generateExcelFile();
 const io = new Server(8081, {
     cors: {
         origin: "*",          // Cho phép mọi nguồn truy cập (FE mở file local cũng được)
