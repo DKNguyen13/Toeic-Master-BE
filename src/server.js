@@ -69,7 +69,7 @@ await InitData.seedLessons();
 await InitData.seedFlashcards();
 await InitData.seedLessons();
 await InitData.syncMeiliUsersOnce();
-await InitData.initListeningQuestions();
+//await InitData.initListeningQuestions();
 await InitData.resolveStaleOrders();
 
 const io = new Server(8081, {
