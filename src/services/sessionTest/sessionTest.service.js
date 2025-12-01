@@ -268,6 +268,74 @@ export const submitTestSession = async (sessionId, userId) => {
     }
 };
 
+export const getTestSessionResult = async (sessionId, userId) => {
+    const session = await UserTestSession.findOne({
+        _id: sessionId,
+        userId,
+        status: 'completed'
+    }).populate('testId', 'title slug testCode');
+
+    if (!session) {
+        return error(res, 'Không tìm thấy bài làm');
+    }
+
+    const questions = await Question.find({
+        testId: session.testId,
+        partNumber: { $in: session.testConfig.selectedParts }
+    })
+        .sort({ globalQuestionNumber: 1 })
+        .select('question group choices questionNumber globalQuestionNumber partNumber correctAnswer explanation');
+    // Get user answers with populated question details
+    const userAnswer = await UserAnswer.findOne({
+        sessionId,
+        userId
+    }).select('questions.questionId questions.selectedAnswer questions.timeSpent questions.isSkipped questions.isFlagged');
+
+    // Map answers theo questionId
+    const answerMap = {};
+    if (userAnswer?.questions) {
+        userAnswer.questions.forEach((ans) => {
+            answerMap[ans.questionId.toString()] = {
+                selectedAnswer: ans.selectedAnswer,
+                timeSpent: ans.timeSpent,
+                isSkipped: ans.isSkipped,
+                isFlagged: ans.isFlagged,
+            };
+        });
+    }
+
+    // Merge question info + userAnswer
+    const questionsWithAnswers = questions.map((q) => ({
+        id: q._id,
+        question: q.question,
+        choices: q.choices,
+        group: q.group,
+        questionNumber: q.questionNumber,
+        globalQuestionNumber: q.globalQuestionNumber,
+        partNumber: q.partNumber,
+        correctAnswer: q.correctAnswer,     // thêm để hiển thị đáp án
+        explanation: q.explanation,         // thêm để hiển thị giải thích
+        userAnswer: answerMap[q._id.toString()] || null
+    }));
+
+    // Chuẩn bị response
+    const sessionResponse = {
+        id: session._id,
+        sessionCode: session.sessionCode,
+        sessionType: session.sessionType,
+        test: session.testId,
+        completedAt: session.completedAt,
+        timeSpent: session.timeSpent,
+        results: session.results,
+        selectedParts: session.testConfig.selectedParts
+    };
+
+    return {
+        session: sessionResponse,
+        answers: questionsWithAnswers
+    };
+};
+
 const checkActiveSessionTest = async (userId, testId) => {
     const activeSession = await UserTestSession.findOne({
         userId,
