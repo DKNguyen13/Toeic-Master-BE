@@ -1,7 +1,6 @@
 import { success, error } from '../utils/response.js';
 
 import UserTestSession from "../models/userTestSession.model.js";
-import UserAnswer from "../models/userAnswer.model.js";
 import * as sessionTestService from "../services/sessionTest/sessionTest.service.js";
 
 // [POST] /api/session/start
@@ -149,50 +148,13 @@ export const getSessionResults = async (req, res) => {
         const { sessionId } = req.params;
         const userId = req.user.id;
 
-        const session = await UserTestSession.findOne({
-            _id: sessionId,
-            userId,
-            status: 'completed'
-        }).populate('testId', 'title slug testCode');
+        const data = await sessionTestService.getTestSessionResult(sessionId, userId);
 
-        if (!session) {
-            return error(res, 'Session not found');
-        }
+        return success(res, 'Lấy dữ liệu kết quả bài thi thành công', { data });
 
-        // Get user answers with populated question details
-        const userAnswer = await UserAnswer.findOne({
-            sessionId,
-            userId
-        }).populate({
-            path: 'questions.questionId',
-            select: 'question group choices correctAnswer explanation partNumber questionNumber globalQuestionNumber'
-        });
-
-        const answersSorted = userAnswer?.questions.sort((a, b) => {
-            const qa = a.questionId?.globalQuestionNumber || 0;
-            const qb = b.questionId?.globalQuestionNumber || 0;
-            return qa - qb;
-        });
-
-        return success(
-            res,
-            'Get result session successfully',
-            {
-                session: {
-                    id: session._id,
-                    sessionCode: session.sessionCode,
-                    test: session.testId,
-                    sessionType: session.sessionType,
-                    completedAt: session.completedAt,
-                    timeSpent: session.timeSpent,
-                    results: session.results
-                },
-                answers: answersSorted || []
-            }
-        );
-
-    } catch (error) {
-        return error(res, 'Error fetching session results');
+    } catch (err) {
+        console.log(err);
+        return error(res, `Lỗi khi lấy dữ liệu kết quả bài thi: ${err.message}`, 500);
     }
 };
 
