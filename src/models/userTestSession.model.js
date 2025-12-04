@@ -50,15 +50,19 @@ const userTestSessionSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     },
+
     pausedAt: Date,
+    resumedAt: Date,
     completedAt: Date,
     submittedAt: Date,
     expiredAt: Date,
-    timeSpent: {
+    timeSpent: { // seconds
         type: Number,
         default: 0
     },
     progress: {
+        timeRemaining: { type: Number }, // seconds
+        totalPauseDuration: { type: Number, default: 0 }, // seconds
         currentPartNumber: Number,
         currentQuestionId: {
             type: mongoose.Schema.Types.ObjectId,
@@ -119,11 +123,10 @@ userTestSessionSchema.pre('validate', function (next) {
 });
 
 // method update when submit test session
-userTestSessionSchema.methods.completeTestSession = function (results) {
+userTestSessionSchema.methods.completeTestSession = function (results, date) {
     this.status = SESSION_STATUS.COMPLETED;
-    this.completedAt = new Date();
-    this.submittedAt = new Date();
-    this.timeSpent = Math.floor((Date.now() - this.startedAt.getTime()) / 1000);
+    this.completedAt = date;
+    this.submittedAt = date;
     this.results = results;
     return this.save();
 };
