@@ -8,7 +8,8 @@ import { calculateSessionResults } from "../score.service.js";
 import {
     SESSION_TYPE,
     ACTIVE_SESSION_STATUSES,
-    TOEIC_PARTS
+    TOEIC_PARTS,
+    SESSION_STATUS
 } from '../../constants/sessionTest.constants.js';
 
 export const startTestSession = async (userId, { testId, sessionType, selectedParts, timeLimit }) => {
@@ -43,12 +44,13 @@ export const startTestSession = async (userId, { testId, sessionType, selectedPa
         progress: {
             totalQuestions,
             answeredCount: 0,
-            completionPercentage: 0
-        }
+            completionPercentage: 0,
+            timeRemaining: timeLimit > 0 ? timeLimit * 60 : null, // convert to seconds
+            totalPauseDuration: 0
+        },
+        status: SESSION_STATUS.STARTED
     });
-    if (timeLimit > 0) {
-        session.timeRemaining = new Date(session.startedAt.getTime() + timeLimit * 60 * 1000);
-    }
+
     await session.save();
 
     await UserAnswer.create({
@@ -74,7 +76,7 @@ export const getTestSession = async (sessionId, userId) => {
         partNumber: { $in: session.testConfig.selectedParts }
     })
         .sort({ globalQuestionNumber: 1 })
-        .select('question group choices questionNumber globalQuestionNumber partNumber');
+        .select('question group choices.label choices.text questionNumber globalQuestionNumber partNumber');
 
     // Get exists answers from UserAnswer
     const userAnswer = await UserAnswer.findOne({
@@ -107,6 +109,14 @@ export const getTestSession = async (sessionId, userId) => {
         userAnswer: answerMap[q._id.toString()] || null
     }));
 
+    const timeRemaining = calculateTimeRemaining({
+        timeLimitMinutes: session.testConfig.timeLimit,
+        startedAt: session.startedAt,
+        resumedAt: session.resumedAt,
+        status: session.status,
+        previousTimeRemainingMinutes: session.progress.timeRemaining, // nếu PAUSED mới dùng
+        timeSpentSeconds: session.timeSpent
+    });
     // Chọn những field cần thiết cho FE
     const sessionResponse = {
         id: session._id,
@@ -117,7 +127,8 @@ export const getTestSession = async (sessionId, userId) => {
             timeLimit: session.testConfig.timeLimit
         },
         progress: session.progress,
-        timeRemaining: calculateTimeRemaining(session)
+        timeRemaining: timeRemaining,
+        status: session.status
     };
 
     return {
@@ -221,6 +232,13 @@ export const submitTestSession = async (sessionId, userId) => {
         throw new Error('Không tìm thấy phiên làm bài');
     }
 
+    const now = new Date();
+
+    // Calculate final timeSpent correctly
+    const lastActiveTime = session.startedAt || session.resumedAt;
+    const finalActiveTime = Math.floor((now - lastActiveTime) / 1000);
+    session.timeSpent = (session.timeSpent || 0) + finalActiveTime;
+
     // Get all questions of test session
     const questions = await Question.find({
         testId: session.testId,
@@ -254,7 +272,7 @@ export const submitTestSession = async (sessionId, userId) => {
     const results = await calculateSessionResults(sessionId, userId);
 
     // Update session
-    await session.completeTestSession(results);
+    await session.completeTestSession(results, now);
 
     // Update test statistics
     await Test.findByIdAndUpdate(session.testId, {
@@ -336,6 +354,118 @@ export const getTestSessionResult = async (sessionId, userId) => {
     };
 };
 
+
+// Pause session
+export const pauseTestSession = async (sessionId, userId) => {
+    const session = await UserTestSession.findOne({
+        _id: sessionId,
+        userId,
+        status: { $in: [SESSION_STATUS.STARTED, SESSION_STATUS.IN_PROGRESS] }
+    });
+
+    if (!session) {
+        throw new Error('Không tìm thấy phiên làm bài hợp lệ');
+    }
+
+    const now = new Date();
+
+    // check session expired (7 days)
+    if (now > session.expiredAt) {
+        session.status = SESSION_STATUS.TIMEOUT;
+        session.completedAt = now;
+        await session.save();
+        throw new Error('Phiên thi đã hết hạn');
+    }
+
+    // calculate active time in this session
+    const lastActiveTime = session.resumedAt || session.startedAt;
+    const activeTimeThisSession = Math.floor((now - lastActiveTime) / 1000);
+
+    // update total timeSpent
+    session.timeSpent = (session.timeSpent || 0) + activeTimeThisSession;
+
+    // calc timeRemaining if has time limit
+    const timeLimit = session.testConfig.timeLimit
+    let timeRemaining = null;
+    if (timeLimit > 0) {
+        const timeLimitSeconds = timeLimit * 60;
+        timeRemaining = Math.max(0, timeLimitSeconds - session.timeSpent);
+
+        if (timeRemaining <= 0) {
+            session.status = SESSION_STATUS.TIMEOUT;
+            session.completedAt = now;
+            session.progress.timeRemaining = 0;
+            await session.save();
+            throw new Error('Hết thời gian làm bài');
+        }
+
+        session.progress.timeRemaining = timeRemaining;
+    }
+    else {
+        session.progress.timeRemaining = timeRemaining;
+    }
+
+    // update session
+    session.status = SESSION_STATUS.PAUSED;
+    session.pausedAt = now;
+
+    await session.save();
+};
+
+export const resumeTestSession = async (sessionId, userId) => {
+    const session = await UserTestSession.findOne({
+        _id: sessionId,
+        userId,
+        status: SESSION_STATUS.PAUSED
+    });
+
+    if (!session) {
+        throw new Error('Không tìm thấy phiên làm bài hợp lệ');
+    }
+
+    const now = new Date();
+
+    // check session expired (7 days)
+    if (now > session.expiredAt) {
+        session.status = SESSION_STATUS.TIMEOUT;
+        session.completedAt = now;
+        await session.save();
+        throw new Error('Phiên thi đã hết hạn');
+    }
+
+    const timeLimit = session.testConfig.timeLimit;
+    const timeRemaining = session.progress.timeRemaining;
+
+    // if has time limit
+    if (timeLimit && timeLimit > 0) {
+        if (timeRemaining === null || timeRemaining === undefined) {
+            throw new Error('Không tìm thấy thông tin thời gian còn lại');
+        }
+
+        // check timeRemaining
+        if (timeRemaining <= 0) {
+            session.status = SESSION_STATUS.TIMEOUT;
+            session.completedAt = now;
+            await session.save();
+            throw new Error('Hết thời gian làm bài');
+        }
+    }
+
+    // calc total pause duration
+    if(session.pausedAt) {
+        const pauseDuration = Math.floor((now - session.pausedAt) / 1000);
+        session.progress.totalPauseDuration = (session.progress.totalPauseDuration || 0) + pauseDuration;
+    }
+
+    // resume session
+    session.status = SESSION_STATUS.IN_PROGRESS;
+    session.resumedAt = now;
+
+    await session.save();
+
+};
+
+// Helper function
 const checkActiveSessionTest = async (userId, testId) => {
     const activeSession = await UserTestSession.findOne({
         userId,
@@ -373,13 +503,29 @@ const getSessionInfo = async (sessionId, userId) => {
     return session;
 };
 
-const calculateTimeRemaining = (session) => {
-    const timeLimit = session.testConfig.timeLimit; // phút
-    if (!timeLimit || timeLimit <= 0) {
-        return null; // không giới hạn
+const calculateTimeRemaining = ({
+    timeLimitMinutes,
+    startedAt,
+    resumedAt = null,
+    status,
+    previousTimeRemainingMinutes = 0,
+    timeSpentSeconds = 0
+}) => {
+    // Không giới hạn thời gian
+    if (!timeLimitMinutes || timeLimitMinutes <= 0) {
+        return null;
     }
 
-    const timeLimitMs = timeLimit * 60 * 1000;
-    const timeSpent = Date.now() - session.startedAt.getTime(); // ms đã dùng
-    return Math.max(0, timeLimitMs - timeSpent);
+    // Nếu đang PAUSED → lấy giá trị đã lưu (phút → giây)
+    if (status === SESSION_STATUS.PAUSED) {
+        return Math.max(0, previousTimeRemainingMinutes * 60);
+    }
+
+    // Tính cho session đang active
+    const timeLimitSeconds = timeLimitMinutes * 60;
+    const lastActiveTime = resumedAt || startedAt;
+    const currentActiveSeconds = Math.floor((Date.now() - lastActiveTime.getTime()) / 1000);
+    const totalTimeSpent = timeSpentSeconds + currentActiveSeconds;
+
+    return Math.max(0, timeLimitSeconds - totalTimeSpent);
 };

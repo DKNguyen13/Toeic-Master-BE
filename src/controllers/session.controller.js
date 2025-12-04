@@ -72,28 +72,8 @@ export const pauseSession = async (req, res) => {
         const { sessionId } = req.params;
         const userId = req.user.id;
 
-        const session = await UserTestSession.findOneAndUpdate(
-            {
-                _id: sessionId,
-                userId,
-                status: { $in: ['started', 'in-progress'] }
-            },
-            {
-                status: 'paused',
-                pausedAt: new Date()
-            },
-            { new: true }
-        );
-
-        if (!session) {
-            return error(res, 'Không tìm thấy phiên làm bài');
-        }
-
-        res.status(200).json({
-            status: 'success',
-            message: 'Session paused successfully',
-            data: { sessionId, status: 'paused' }
-        });
+        await sessionTestService.pauseTestSession(sessionId, userId);
+        return success(res, 'Pause phiên làm bài thành công');
     } catch (err) {
         return error(res, 'Lỗi xảy ra khi tạm dừng phiên làm bài', 500, err.message);
     }
@@ -105,40 +85,10 @@ export const resumeSession = async (req, res) => {
         const { sessionId } = req.params;
         const userId = req.user.id;
 
-        const session = await UserTestSession.findOne({
-            _id: sessionId,
-            userId,
-            status: 'paused'
-        });
-
-        if (!session) {
-            return error(res, 'Paused session not found');
-        }
-
-        // Check if session expired
-        if (new Date() > session.expiredAt) {
-            session.status = 'timeout';
-            session.completedAt = new Date();
-            await session.save();
-
-            return error(res, 'Session has expired');
-        }
-
-        session.status = 'in-progress';
-        session.resumedAt = new Date();
-        await session.save();
-
-
-        return success(
-            res,
-            'Session resumed successfully',
-            {
-                sessionId,
-                status: 'in-progress'
-            }
-        );
+        await sessionTestService.resumeTestSession(sessionId, userId);
+        return success(res, 'Resume phiên làm bài thành công');
     } catch (err) {
-        return error(res, 'Error resuming session');
+        return error(res, 'Lỗi xảy ra khi tiếp tục phiên làm bài', 500, err.message);
     }
 };
 
@@ -178,7 +128,7 @@ export const getUserSessions = async (req, res) => {
             .sort({ createdAt: -1 })
             .limit(limit * 1)
             .skip((page - 1) * limit)
-            .select('sessionCode progress sessionType status createdAt completedAt results.totalScore results.totalQuestions results.accuracy');
+            .select('sessionCode progress sessionType status createdAt completedAt timeSpent results.totalScore results.totalQuestions results.accuracy');
 
         const total = await UserTestSession.countDocuments(filter);
 

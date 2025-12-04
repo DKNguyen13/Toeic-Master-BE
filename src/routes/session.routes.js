@@ -6,7 +6,7 @@ import {
     getTestSession, getSessionResults, getUserSessions,
     getUserStatistics, pauseSession, resumeSession, startSession,
     submitBulkAnswers, submitSession
-} from '../controllers/session.Controller.js';
+} from '../controllers/session.controller.js';
 
 
 const router = express.Router();
