@@ -82,7 +82,7 @@ export const getTestSession = async (sessionId, userId) => {
     const userAnswer = await UserAnswer.findOne({
         sessionId,
         userId
-    }).select('questionId selectedAnswer timeSpent isSkipped isFlagged');
+    }).select('questions.questionId questions.selectedAnswer questions.timeSpent questions.isSkipped questions.isFlagged');
 
     // Map answers to questions
     const answerMap = {};
@@ -124,8 +124,10 @@ export const getTestSession = async (sessionId, userId) => {
         sessionType: session.sessionType,
         testConfig: {
             selectedParts: session.testConfig.selectedParts,
-            timeLimit: session.testConfig.timeLimit
+            timeLimit: session.testConfig.timeLimit,
         },
+        audio: session.testId.audio,
+        title: session.testId.title,
         progress: session.progress,
         timeRemaining: timeRemaining,
         status: session.status
@@ -138,6 +140,7 @@ export const getTestSession = async (sessionId, userId) => {
 };
 
 export const submitBulkAnswers = async (sessionId, userId, answers) => {
+
     const session = await UserTestSession.findOne({
         _id: sessionId,
         userId,
