@@ -28,7 +28,8 @@ import NotificationService from "./services/notification.service.js";
 // socket
 import { Server } from "socket.io";
 import { initChatbotSocket } from './sockets/chatbot/chatbotSocket.js';
-
+import { analyzeResult } from './controllers/analysis.controller.js';
+import { initSaveAnswersSocket } from './sockets/saveAnswer/saveAnswerSocket.js';
 
 const app = express()
 
@@ -80,6 +81,7 @@ const io = new Server(8081, {
 });
 
 const onlineUsers = initChatbotSocket(io, { geminiApiKey: config.geminiApiKey });
+initSaveAnswersSocket(io);
 
 const notificationService = new NotificationService(io, onlineUsers);
 app.set('notificationService', notificationService);
