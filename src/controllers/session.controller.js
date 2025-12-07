@@ -159,8 +159,8 @@ export const getUserStatistics = async (req, res) => {
             userId,
             status: 'completed',
             sessionType: 'full-test',
-            'results.listeningScore': { $exists: true, $gt: 0 },
-            'results.readingScore': { $exists: true, $gt: 0 }
+            'results.listeningScore': { $exists: true },
+            'results.readingScore': { $exists: true }
         }).select('results.listeningScore results.readingScore results.totalScore createdAt');
 
         if (completedSessions.length === 0) {
