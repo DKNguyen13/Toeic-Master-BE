@@ -10,7 +10,8 @@ import { syncUsersToMeili } from "../utils/meiliSync.js";
 import PaymentOrder from "../models/paymentOrder.model.js";
 import FlashcardSet from "../models/flashcardSet.model.js";
 import ScoreMapping from "../models/scoreMapping.model.js";
-import { estimateScore } from "../services/score.service.js";
+import NotificationService from "../services/notification.service.js";
+import ListeningQuestion from "../models/fillBlankQuestion.model.js";
 
 const __dirname = path.resolve();
 
@@ -22,6 +23,37 @@ export const syncMeiliUsersOnce = async () => {
     console.log("Meilisearch sync complete!");
   } catch (err) {
     console.error("Error syncing Meilisearch:", err);
+  }
+};
+
+// Test VIP expiry notification
+export const testVIPExpiryNotification = async (notificationService) => {
+  try{
+    console.log('Testing VIP expiry notifications...');
+    await notificationService.sendVIPExpiryNotification();
+  }
+  catch (err){
+    console.error("Error test notification:", err);
+  }
+
+};
+
+// Resolve stale orders
+export const resolveStaleOrders = async () => {
+  try {
+    console.log("Resolving stale pending PaymentOrders...");
+    const THRESHOLD_MINUTES = 30;
+    const now = new Date();
+    const threshold = new Date(now - THRESHOLD_MINUTES * 60 * 1000);
+
+    const result = await PaymentOrder.updateMany(
+      { status: 'pending', createdAt: { $lt: threshold } },
+      { status: 'fail', isActive: false }
+    );
+
+    console.log(`Resolved ${result.modifiedCount} stale pending orders`);
+  } catch (err) {
+    console.error("Error resolving stale pending orders:", err);
   }
 };
 
@@ -86,6 +118,318 @@ export const createAdminIfNotExist = async () => {
   }
 };
 
+export const initListeningQuestions = async () => {
+  try {
+    const questionsData = [
+    {
+      sentence: "The train will arrive at the station by 3 PM, and passengers should prepare their tickets.",
+      blanks: [
+        { position: 1, answer: "train" },
+        { position: 10, answer: "prepare" }
+      ]
+    },
+    {
+      sentence: "Please submit the documents before the deadline tomorrow morning.",
+      blanks: [
+        { position: 1, answer: "submit" },
+        { position: 7, answer: "deadline" }
+      ]
+    },
+    {
+      sentence: "She enjoys reading books in the library during the quiet afternoons.",
+      blanks: [
+        { position: 2, answer: "reading" },
+        { position: 5, answer: "library" }
+      ]
+    },
+    {
+      sentence: "The company will announce the results of the project next Monday.",
+      blanks: [
+        { position: 4, answer: "results" },
+        { position: 7, answer: "project" }
+      ]
+    },
+    {
+      sentence: "Students must complete their assignments and submit them on time.",
+      blanks: [
+        { position: 3, answer: "assignments" },
+        { position: 6, answer: "submit" }
+      ]
+    },
+    {
+      sentence: "He bought a new laptop to improve his productivity and work efficiency.",
+      blanks: [
+        { position: 3, answer: "laptop" },
+        { position: 9, answer: "productivity" }
+      ]
+    },
+    {
+      sentence: "Traveling abroad requires a valid passport and proper visa documentation.",
+      blanks: [
+        { position: 2, answer: "passport" },
+        { position: 6, answer: "visa" }
+      ]
+    },
+    {
+      sentence: "The chef prepared a delicious meal for all the guests at the restaurant.",
+      blanks: [
+        { position: 2, answer: "prepared" },
+        { position: 7, answer: "guests" }
+      ]
+    },
+    {
+      sentence: "The manager will review the sales report before the meeting.",
+      blanks: [
+        { position: 3, answer: "review" },
+        { position: 5, answer: "report" }
+      ]
+    },
+    {
+      sentence: "Our company plans to expand into international markets next year.",
+      blanks: [
+        { position: 4, answer: "expand" },
+        { position: 6, answer: "markets" }
+      ]
+    },
+    {
+      sentence: "She always arrives early to prepare for her classes.",
+      blanks: [
+        { position: 2, answer: "arrives" },
+        { position: 6, answer: "prepare" }
+      ]
+    },
+    {
+      sentence: "The technician fixed the computer before the client arrived.",
+      blanks: [
+        { position: 2, answer: "fixed" },
+        { position: 7, answer: "arrived" }
+      ]
+    },
+    {
+      sentence: "Employees are required to wear their ID badges at all times.",
+      blanks: [
+        { position: 5, answer: "wear" },
+        { position: 7, answer: "badges" }
+      ]
+    },
+    {
+      sentence: "We need to schedule a meeting to discuss the project timeline.",
+      blanks: [
+        { position: 3, answer: "schedule" },
+        { position: 8, answer: "timeline" }
+      ]
+    },
+    {
+      sentence: "The teacher asked the students to complete their homework before Friday.",
+      blanks: [
+        { position: 4, answer: "complete" },
+        { position: 7, answer: "homework" }
+      ]
+    },
+    {
+      sentence: "The new policy will affect all employees starting next month.",
+      blanks: [
+        { position: 3, answer: "affect" },
+        { position: 6, answer: "employees" }
+      ]
+    },
+    {
+      sentence: "He organized a team-building event to boost morale.",
+      blanks: [
+        { position: 2, answer: "organized" },
+        { position: 7, answer: "morale" }
+      ]
+    },
+    {
+      sentence: "Please ensure that all the files are backed up before leaving.",
+      blanks: [
+        { position: 4, answer: "files" },
+        { position: 7, answer: "backed" }
+      ]
+    },
+    {
+      sentence: "The customer service representative answered all questions politely.",
+      blanks: [
+        { position: 4, answer: "answered" },
+        { position: 6, answer: "questions" }
+      ]
+    },
+    {
+      sentence: "We should analyze the data carefully to make accurate predictions.",
+      blanks: [
+        { position: 2, answer: "analyze" },
+        { position: 8, answer: "predictions" }
+      ]
+    },
+    {
+      sentence: "The software update improved the system's security and stability.",
+      blanks: [
+        { position: 3, answer: "improved" },
+        { position: 7, answer: "security" }
+      ]
+    },
+    {
+      sentence: "He was promoted to senior manager due to his excellent performance.",
+      blanks: [
+        { position: 4, answer: "promoted" },
+        { position: 8, answer: "performance" }
+      ]
+    },
+    {
+      sentence: "The marketing team launched a new campaign last week.",
+      blanks: [
+        { position: 3, answer: "launched" },
+        { position: 6, answer: "campaign" }
+      ]
+    },
+    {
+      sentence: "Please submit your application before the deadline ends.",
+      blanks: [
+        { position: 2, answer: "submit" },
+        { position: 6, answer: "deadline" }
+      ]
+    },
+    {
+      sentence: "The flight was delayed due to bad weather conditions.",
+      blanks: [
+        { position: 3, answer: "delayed" },
+        { position: 7, answer: "weather" }
+      ]
+    },
+    {
+      sentence: "She decided to attend the conference in New York next month.",
+      blanks: [
+        { position: 3, answer: "attend" },
+        { position: 7, answer: "conference" }
+      ]
+    },
+    {
+      sentence: "The IT department installed new software on all company computers.",
+      blanks: [
+        { position: 3, answer: "installed" },
+        { position: 9, answer: "computers" }
+      ]
+    },
+    {
+      sentence: "Employees must follow the safety regulations at the workplace.",
+      blanks: [
+        { position: 3, answer: "follow" },
+        { position: 7, answer: "regulations" }
+      ]
+    },
+    {
+      sentence: "The manager held a meeting to discuss the quarterly budget.",
+      blanks: [
+        { position: 3, answer: "held" },
+        { position: 8, answer: "budget" }
+      ]
+    },
+    {
+      sentence: "Students should review their notes before taking the final exam.",
+      blanks: [
+        { position: 2, answer: "review" },
+        { position: 8, answer: "exam" }
+      ]
+    },
+    {
+      sentence: "The accountant prepared the financial report for the board meeting.",
+      blanks: [
+        { position: 2, answer: "prepared" },
+        { position: 6, answer: "report" }
+      ]
+    },
+    {
+      sentence: "Our team plans to expand our business into new regions.",
+      blanks: [
+        { position: 4, answer: "expand" },
+        { position: 8, answer: "regions" }
+      ]
+    },
+    {
+      sentence: "Please confirm your attendance by replying to this email.",
+      blanks: [
+        { position: 1, answer: "confirm" },
+        { position: 6, answer: "replying" }
+      ]
+    },
+    {
+      sentence: "The manager emphasized the importance of punctuality for all staff.",
+      blanks: [
+        { position: 3, answer: "emphasized" },
+        { position: 7, answer: "punctuality" }
+      ]
+    },
+    {
+      sentence: "He purchased new office supplies for the upcoming project.",
+      blanks: [
+        { position: 2, answer: "purchased" },
+        { position: 6, answer: "project" }
+      ]
+    },
+    {
+      sentence: "The receptionist greeted visitors and provided necessary information.",
+      blanks: [
+        { position: 2, answer: "greeted" },
+        { position: 6, answer: "information" }
+      ]
+    },
+    {
+      sentence: "Employees are encouraged to attend workshops for professional growth.",
+      blanks: [
+        { position: 3, answer: "attend" },
+        { position: 8, answer: "growth" }
+      ]
+    },
+    {
+      sentence: "The IT team resolved the network issues within a few hours.",
+      blanks: [
+        { position: 3, answer: "resolved" },
+        { position: 5, answer: "network" }
+      ]
+    },
+    {
+      sentence: "She prepared a detailed presentation for the annual conference.",
+      blanks: [
+        { position: 2, answer: "prepared" },
+        { position: 8, answer: "conference" }
+      ]
+    },
+    {
+      sentence: "The project manager monitored the progress of all ongoing tasks.",
+      blanks: [
+        { position: 3, answer: "monitored" },
+        { position: 8, answer: "tasks" }
+      ]
+    },
+    {
+      sentence: "Please make sure to submit all forms before the office closes.",
+      blanks: [
+        { position: 6, answer: "submit" },
+        { position: 9, answer: "closes" }
+      ]
+    },
+    {
+      sentence: "He attended the training session to improve his technical skills.",
+      blanks: [
+        { position: 2, answer: "attended" },
+        { position: 9, answer: "skills" }
+      ]
+    }
+    ];
+
+    const existingCount = await ListeningQuestion.countDocuments();
+    if (existingCount > 0) {
+      console.log("Listening questions already exist, skipping import.");
+      return;
+    }
+
+    const inserted = await ListeningQuestion.insertMany(questionsData);
+    console.log(`Inserted ${inserted.length} listening questions.`);
+  } catch (err) {
+    console.error("Error initializing listening questions:", err);
+  }
+};
+
 //Auto seed packages if not exist
 export const seedPackages = async () => {
   const packages = [
@@ -124,7 +468,6 @@ export const seedPackages = async () => {
 // Seed flash card
 export const seedFlashcards = async () => {
   try {
-    // Lấy admin
     const admin = await User.findOne({ role: 'admin' });
     if (!admin) {
       console.log("Admin không tồn tại, vui lòng chạy createAdminIfNotExist trước.");
@@ -194,6 +537,170 @@ export const seedFlashcards = async () => {
         { word: "supplier", meaning: "Nhà cung cấp", example: "We have a reliable supplier for materials." },
         { word: "inventory", meaning: "Hàng tồn kho", example: "Inventory must be checked regularly." },
         { word: "shipment", meaning: "Lô hàng", example: "The shipment arrived on time." }
+      ]
+    },
+    {
+      name: "Environment & Nature",
+      description: "Vocabulary related to the environment, ecology, and nature.",
+      words: [
+        { word: "ecosystem", meaning: "Hệ sinh thái", example: "The rainforest is a diverse ecosystem." },
+        { word: "pollution", meaning: "Ô nhiễm", example: "Air pollution affects our health." },
+        { word: "recycle", meaning: "Tái chế", example: "We need to recycle plastic and paper." },
+        { word: "sustainable", meaning: "Bền vững", example: "Sustainable energy sources are important." },
+        { word: "conservation", meaning: "Bảo tồn", example: "Wildlife conservation is vital." },
+        { word: "deforestation", meaning: "Phá rừng", example: "Deforestation affects climate change." },
+        { word: "climate change", meaning: "Biến đổi khí hậu", example: "Climate change leads to rising temperatures." },
+        { word: "global warming", meaning: "Hiện tượng nóng lên toàn cầu", example: "Global warming melts glaciers." },
+        { word: "solar energy", meaning: "Năng lượng mặt trời", example: "Solar energy reduces electricity bills." },
+        { word: "wind energy", meaning: "Năng lượng gió", example: "Wind energy is renewable." },
+        { word: "fossil fuel", meaning: "Nhiên liệu hóa thạch", example: "Coal is a common fossil fuel." },
+        { word: "organic", meaning: "Hữu cơ", example: "Organic farming avoids chemicals." },
+        { word: "biodiversity", meaning: "Đa dạng sinh học", example: "Biodiversity is crucial for ecosystems." },
+        { word: "greenhouse gas", meaning: "Khí nhà kính", example: "Carbon dioxide is a greenhouse gas." },
+        { word: "ozone layer", meaning: "Tầng ozone", example: "Ozone layer protects Earth from UV rays." },
+        { word: "endangered species", meaning: "Loài nguy cấp", example: "Tigers are an endangered species." },
+        { word: "wildlife", meaning: "Động vật hoang dã", example: "Wildlife must be protected." },
+        { word: "habitat", meaning: "Môi trường sống", example: "Deforestation destroys animal habitats." },
+        { word: "compost", meaning: "Phân hữu cơ", example: "Compost enriches the soil." },
+        { word: "emission", meaning: "Khí thải", example: "Car emissions pollute the air." },
+        { word: "landfill", meaning: "Bãi rác", example: "Landfill sites produce methane gas." },
+        { word: "rainforest", meaning: "Rừng nhiệt đới", example: "Rainforests are rich in biodiversity." },
+        { word: "ozone depletion", meaning: "Suy giảm tầng ozone", example: "CFCs cause ozone depletion." },
+        { word: "acid rain", meaning: "Mưa axit", example: "Acid rain damages buildings and crops." },
+        { word: "reforestation", meaning: "Trồng rừng lại", example: "Reforestation restores ecosystems." },
+        { word: "environmental impact", meaning: "Tác động môi trường", example: "The project has a significant environmental impact." },
+        { word: "carbon footprint", meaning: "Dấu chân carbon", example: "Reduce your carbon footprint by walking more." },
+        { word: "biodegradable", meaning: "Phân hủy sinh học", example: "Use biodegradable packaging." },
+        { word: "wildfire", meaning: "Cháy rừng", example: "Wildfires destroy forests." },
+        { word: "flood", meaning: "Lũ lụt", example: "Heavy rains caused a flood." },
+        { word: "drought", meaning: "Hạn hán", example: "Drought affects crop production." },
+        { word: "tsunami", meaning: "Sóng thần", example: "The tsunami hit coastal areas." },
+        { word: "earthquake", meaning: "Động đất", example: "The earthquake damaged buildings." },
+        { word: "volcano", meaning: "Núi lửa", example: "The volcano erupted last night." },
+        { word: "natural disaster", meaning: "Thiên tai", example: "Natural disasters require emergency plans." },
+        { word: "pollutant", meaning: "Chất ô nhiễm", example: "Factories release pollutants into the river." },
+        { word: "erosion", meaning: "Xói mòn", example: "Erosion damages farmland." },
+        { word: "water conservation", meaning: "Bảo tồn nước", example: "Water conservation is important in dry regions." },
+        { word: "air quality", meaning: "Chất lượng không khí", example: "Air quality is monitored daily." },
+        { word: "noise pollution", meaning: "Ô nhiễm tiếng ồn", example: "Noise pollution affects health." },
+        { word: "reusable", meaning: "Tái sử dụng", example: "Bring reusable bags when shopping." },
+        { word: "green energy", meaning: "Năng lượng xanh", example: "Invest in green energy solutions." },
+        { word: "eco-friendly", meaning: "Thân thiện môi trường", example: "Use eco-friendly products." },
+        { word: "sustainability", meaning: "Sự bền vững", example: "Sustainability is key for future generations." },
+        { word: "organic farming", meaning: "Nông nghiệp hữu cơ", example: "Organic farming avoids pesticides." },
+        { word: "climate action", meaning: "Hành động vì khí hậu", example: "Governments take climate action seriously." },
+        { word: "environmental policy", meaning: "Chính sách môi trường", example: "Environmental policies regulate pollution." },
+        { word: "greenhouse effect", meaning: "Hiệu ứng nhà kính", example: "Greenhouse effect contributes to global warming." }
+      ]
+    },
+    {
+      name: "Food & Cooking",
+      description: "Vocabulary related to food, ingredients, and cooking.",
+      words: [
+        { word: "ingredient", meaning: "Nguyên liệu", example: "Check the ingredient list before cooking." },
+        { word: "recipe", meaning: "Công thức nấu ăn", example: "Follow the recipe step by step." },
+        { word: "bake", meaning: "Nướng", example: "Bake the cake for 30 minutes." },
+        { word: "boil", meaning: "Luộc", example: "Boil the eggs for 10 minutes." },
+        { word: "fry", meaning: "Chiên", example: "Fry the chicken until golden brown." },
+        { word: "grill", meaning: "Nướng trên vỉ", example: "Grill the steak to your liking." },
+        { word: "steam", meaning: "Hấp", example: "Steam the vegetables for 5 minutes." },
+        { word: "roast", meaning: "Quay", example: "Roast the turkey for the party." },
+        { word: "chop", meaning: "Thái / Cắt nhỏ", example: "Chop the onions finely." },
+        { word: "slice", meaning: "Cắt lát", example: "Slice the bread before serving." },
+        { word: "dice", meaning: "Cắt hạt lựu", example: "Dice the tomatoes for the salad." },
+        { word: "mix", meaning: "Trộn", example: "Mix all ingredients together." },
+        { word: "stir", meaning: "Khuấy", example: "Stir the soup continuously." },
+        { word: "season", meaning: "Nêm nếm", example: "Season the food with salt and pepper." },
+        { word: "marinate", meaning: "Ướp", example: "Marinate the meat overnight." },
+        { word: "simmer", meaning: "Kho / Ninh nhỏ lửa", example: "Simmer the sauce for 20 minutes." },
+        { word: "whisk", meaning: "Đánh trứng / Kem", example: "Whisk the eggs until fluffy." },
+        { word: "knead", meaning: "Nhồi bột", example: "Knead the dough thoroughly." },
+        { word: "peel", meaning: "Gọt vỏ", example: "Peel the potatoes before boiling." },
+        { word: "crush", meaning: "Nghiền", example: "Crush the garlic cloves." },
+        { word: "blend", meaning: "Xay / Pha trộn", example: "Blend the fruits for a smoothie." },
+        { word: "rosemary", meaning: "Hương thảo", example: "Add rosemary for flavor." },
+        { word: "thyme", meaning: "Húng tây", example: "Thyme enhances the taste of meat." },
+        { word: "basil", meaning: "Húng quế", example: "Basil is used in Italian dishes." },
+        { word: "oregano", meaning: "Kinh giới", example: "Oregano goes well with pizza." },
+        { word: "cumin", meaning: "Cumin", example: "Cumin adds aroma to curry." },
+        { word: "paprika", meaning: "Ớt bột", example: "Sprinkle paprika on top." },
+        { word: "sugar", meaning: "Đường", example: "Add sugar to taste." },
+        { word: "salt", meaning: "Muối", example: "A pinch of salt is enough." },
+        { word: "pepper", meaning: "Tiêu", example: "Season with black pepper." },
+        { word: "olive oil", meaning: "Dầu ô liu", example: "Use olive oil for salad." },
+        { word: "butter", meaning: "Bơ", example: "Melt the butter before cooking." },
+        { word: "cheese", meaning: "Phô mai", example: "Grate the cheese over pasta." },
+        { word: "yogurt", meaning: "Sữa chua", example: "Mix yogurt into the dressing." },
+        { word: "egg", meaning: "Trứng", example: "Boil the eggs for breakfast." },
+        { word: "milk", meaning: "Sữa", example: "Add milk to the batter." },
+        { word: "cream", meaning: "Kem", example: "Whip the cream until stiff peaks form." },
+        { word: "vegetable", meaning: "Rau củ", example: "Chop the vegetables for stir-fry." },
+        { word: "fruit", meaning: "Trái cây", example: "Eat fresh fruit every day." },
+        { word: "meat", meaning: "Thịt", example: "Grill the meat until cooked." },
+        { word: "fish", meaning: "Cá", example: "Steam the fish with ginger." },
+        { word: "seafood", meaning: "Hải sản", example: "We had seafood for dinner." },
+        { word: "pasta", meaning: "Mì ống", example: "Boil the pasta until al dente." },
+        { word: "rice", meaning: "Gạo / Cơm", example: "Cook rice in a rice cooker." },
+        { word: "soup", meaning: "Súp", example: "Serve hot soup in bowls." },
+        { word: "salad", meaning: "Salad", example: "Toss the salad with dressing." },
+        { word: "dessert", meaning: "Tráng miệng", example: "Chocolate cake is a popular dessert." },
+        { word: "beverage", meaning: "Đồ uống", example: "Offer a cold beverage to guests." },
+        { word: "knife", meaning: "Dao", example: "Use a sharp knife for chopping." },
+        { word: "fork", meaning: "Nĩa", example: "Use a fork to eat salad." }
+      ]
+    },
+    {
+      name: "Sports & Fitness",
+      description: "Vocabulary related to sports, exercise, and fitness.",
+      words: [
+        { word: "exercise", meaning: "Tập thể dục", example: "Regular exercise improves health." },
+        { word: "gym", meaning: "Phòng tập", example: "Go to the gym three times a week." },
+        { word: "workout", meaning: "Bài tập", example: "Follow a workout plan." },
+        { word: "cardio", meaning: "Bài tập tim mạch", example: "Cardio exercises increase endurance." },
+        { word: "strength training", meaning: "Tập sức mạnh", example: "Strength training builds muscles." },
+        { word: "yoga", meaning: "Yoga", example: "Practice yoga for flexibility." },
+        { word: "pilates", meaning: "Pilates", example: "Pilates improves core strength." },
+        { word: "running", meaning: "Chạy bộ", example: "Running every morning is healthy." },
+        { word: "jogging", meaning: "Chạy chậm", example: "Jogging is easier than sprinting." },
+        { word: "sprinting", meaning: "Chạy nước rút", example: "Sprinting builds explosive power." },
+        { word: "cycling", meaning: "Đạp xe", example: "Cycling is good for legs." },
+        { word: "swimming", meaning: "Bơi lội", example: "Swimming is a full-body workout." },
+        { word: "team sport", meaning: "Môn thể thao đồng đội", example: "Football is a team sport." },
+        { word: "individual sport", meaning: "Môn thể thao cá nhân", example: "Tennis is an individual sport." },
+        { word: "competition", meaning: "Cuộc thi / Thi đấu", example: "Join a local competition." },
+        { word: "tournament", meaning: "Giải đấu", example: "The tournament lasts a week." },
+        { word: "coach", meaning: "Huấn luyện viên", example: "The coach plans training sessions." },
+        { word: "athlete", meaning: "Vận động viên", example: "Athletes train daily." },
+        { word: "referee", meaning: "Trọng tài", example: "The referee calls fouls." },
+        { word: "score", meaning: "Điểm số", example: "The score was tied at halftime." },
+        { word: "goal", meaning: "Bàn thắng", example: "He scored a goal." },
+        { word: "point", meaning: "Điểm", example: "She earned 10 points." },
+        { word: "medal", meaning: "Huy chương", example: "He won a gold medal." },
+        { word: "trophy", meaning: "Cúp", example: "The team received a trophy." },
+        { word: "stretching", meaning: "Kéo giãn cơ", example: "Stretching prevents injuries." },
+        { word: "warm-up", meaning: "Khởi động", example: "Do a warm-up before running." },
+        { word: "cool-down", meaning: "Hạ nhiệt", example: "Cool-down helps recovery." },
+        { word: "hydration", meaning: "Bù nước", example: "Hydration is important during exercise." },
+        { word: "endurance", meaning: "Sức bền", example: "Long-distance running requires endurance." },
+        { word: "flexibility", meaning: "Sự linh hoạt", example: "Yoga improves flexibility." },
+        { word: "strength", meaning: "Sức mạnh", example: "Lift weights to build strength." },
+        { word: "balance", meaning: "Cân bằng", example: "Balance exercises prevent falls." },
+        { word: "agility", meaning: "Sự nhanh nhẹn", example: "Agility is crucial in basketball." },
+        { word: "resistance", meaning: "Kháng lực", example: "Use resistance bands for training." },
+        { word: "weights", meaning: "Tạ", example: "Lift weights in the gym." },
+        { word: "dumbbell", meaning: "Tạ tay", example: "Use dumbbells for bicep curls." },
+        { word: "treadmill", meaning: "Máy chạy bộ", example: "Run on the treadmill for cardio." },
+        { word: "elliptical", meaning: "Máy đi bộ elip", example: "The elliptical works legs and arms." },
+        { word: "jump rope", meaning: "Nhảy dây", example: "Jump rope for 10 minutes daily." },
+        { word: "pedometer", meaning: "Máy đếm bước chân", example: "Use a pedometer to track steps." },
+        { word: "personal trainer", meaning: "Huấn luyện viên cá nhân", example: "Hire a personal trainer for guidance." },
+        { word: "nutrition", meaning: "Dinh dưỡng", example: "Proper nutrition improves performance." },
+        { word: "protein", meaning: "Protein", example: "Protein helps build muscles." },
+        { word: "carbohydrate", meaning: "Tinh bột", example: "Carbohydrates provide energy." },
+        { word: "fat", meaning: "Chất béo", example: "Limit saturated fat intake." },
+        { word: "vitamin", meaning: "Vitamin", example: "Vitamin supplements support health." },
+        { word: "mineral", meaning: "Khoáng chất", example: "Minerals strengthen bones." },
+        { word: "rest day", meaning: "Ngày nghỉ tập luyện", example: "Take a rest day for recovery." }
       ]
     },
     {
@@ -316,6 +823,115 @@ export const seedFlashcards = async () => {
         { word: "request", meaning: "Yêu cầu", example: "Submit a request form." },
         { word: "approval", meaning: "Sự phê duyệt", example: "Get manager approval before proceeding." }
       ]
+    },
+    {
+      name: "Technology & IT",
+      description: "Vocabulary related to computers, software, and IT.",
+      words: [
+        { word: "software", meaning: "Phần mềm", example: "Install the latest software update." },
+        { word: "hardware", meaning: "Phần cứng", example: "The computer hardware needs upgrading." },
+        { word: "network", meaning: "Mạng", example: "The office network is down today." },
+        { word: "server", meaning: "Máy chủ", example: "The server hosts our website." },
+        { word: "database", meaning: "Cơ sở dữ liệu", example: "Update the database regularly." },
+        { word: "application", meaning: "Ứng dụng", example: "This application helps manage tasks." },
+        { word: "cloud computing", meaning: "Điện toán đám mây", example: "Our files are stored in cloud computing services." },
+        { word: "encryption", meaning: "Mã hóa", example: "Encryption secures our data." },
+        { word: "firewall", meaning: "Tường lửa", example: "The firewall blocks unauthorized access." },
+        { word: "login", meaning: "Đăng nhập", example: "Please login with your credentials." },
+        { word: "password", meaning: "Mật khẩu", example: "Change your password regularly." },
+        { word: "username", meaning: "Tên đăng nhập", example: "Enter your username to login." },
+        { word: "protocol", meaning: "Giao thức", example: "HTTP is a common web protocol." },
+        { word: "IP address", meaning: "Địa chỉ IP", example: "Each device has a unique IP address." },
+        { word: "router", meaning: "Bộ định tuyến", example: "The router connects all devices to the internet." },
+        { word: "switch", meaning: "Bộ chuyển mạch", example: "The switch manages network traffic." },
+        { word: "bandwidth", meaning: "Băng thông", example: "High bandwidth improves network speed." },
+        { word: "latency", meaning: "Độ trễ", example: "Low latency is critical for online gaming." },
+        { word: "backup", meaning: "Sao lưu", example: "Always backup your important files." },
+        { word: "recovery", meaning: "Phục hồi dữ liệu", example: "Data recovery can save lost files." },
+        { word: "malware", meaning: "Phần mềm độc hại", example: "Install antivirus to prevent malware." },
+        { word: "virus", meaning: "Vi-rút máy tính", example: "The computer was infected by a virus." },
+        { word: "update", meaning: "Cập nhật", example: "Update your software to fix bugs." },
+        { word: "patch", meaning: "Bản vá", example: "Install the security patch immediately." },
+        { word: "debug", meaning: "Gỡ lỗi", example: "The developer debugged the program." },
+        { word: "compile", meaning: "Biên dịch", example: "Compile the code before running it." },
+        { word: "algorithm", meaning: "Thuật toán", example: "The algorithm sorts the data efficiently." },
+        { word: "script", meaning: "Kịch bản / Script", example: "Write a script to automate tasks." },
+        { word: "frontend", meaning: "Giao diện người dùng", example: "Frontend development focuses on design." },
+        { word: "backend", meaning: "Phần máy chủ", example: "Backend handles database operations." },
+        { word: "API", meaning: "Giao diện lập trình ứng dụng", example: "Use the API to connect services." },
+        { word: "framework", meaning: "Khung phát triển", example: "React is a popular frontend framework." },
+        { word: "library", meaning: "Thư viện", example: "Use a library to simplify coding." },
+        { word: "debugger", meaning: "Công cụ gỡ lỗi", example: "The debugger helps find errors." },
+        { word: "IDE", meaning: "Môi trường phát triển tích hợp", example: "VSCode is a common IDE." },
+        { word: "open source", meaning: "Mã nguồn mở", example: "Linux is an open source OS." },
+        { word: "repository", meaning: "Kho mã nguồn", example: "Push your code to the repository." },
+        { word: "commit", meaning: "Ghi lại thay đổi", example: "Commit changes with a descriptive message." },
+        { word: "branch", meaning: "Nhánh", example: "Create a new branch for features." },
+        { word: "merge", meaning: "Hợp nhất", example: "Merge the branch into main after review." },
+        { word: "deployment", meaning: "Triển khai", example: "Deployment moves code to production." },
+        { word: "serverless", meaning: "Không máy chủ", example: "Serverless architecture reduces infrastructure costs." },
+        { word: "virtualization", meaning: "Ảo hóa", example: "Virtualization allows multiple OS on one machine." },
+        { word: "container", meaning: "Container", example: "Docker container isolates apps." },
+        { word: "DevOps", meaning: "Phát triển và vận hành", example: "DevOps improves development cycles." },
+        { word: "CI/CD", meaning: "Tích hợp liên tục / Triển khai liên tục", example: "CI/CD automates builds and tests." },
+        { word: "bandwidth throttling", meaning: "Giới hạn băng thông", example: "ISPs may apply bandwidth throttling." },
+        { word: "token", meaning: "Mã xác thực", example: "Use an access token for API calls." },
+        { word: "session", meaning: "Phiên làm việc", example: "Session expires after 30 minutes of inactivity." },
+        { word: "cookie", meaning: "Cookie", example: "Cookies store user preferences." }
+      ]
+    },
+    {
+      name: "Health & Medical",
+      description: "Vocabulary related to health, medical, and hospitals.",
+      words: [
+        { word: "doctor", meaning: "Bác sĩ", example: "The doctor examined the patient." },
+        { word: "nurse", meaning: "Y tá", example: "The nurse checked the patient's vital signs." },
+        { word: "hospital", meaning: "Bệnh viện", example: "He was admitted to the hospital." },
+        { word: "medicine", meaning: "Thuốc", example: "Take the medicine twice a day." },
+        { word: "prescription", meaning: "Đơn thuốc", example: "The doctor wrote a prescription." },
+        { word: "appointment", meaning: "Cuộc hẹn khám bệnh", example: "I have a doctor's appointment tomorrow." },
+        { word: "surgery", meaning: "Phẫu thuật", example: "The surgery was successful." },
+        { word: "vaccine", meaning: "Vắc-xin", example: "Get vaccinated to prevent disease." },
+        { word: "symptom", meaning: "Triệu chứng", example: "He has flu-like symptoms." },
+        { word: "emergency", meaning: "Cấp cứu / Khẩn cấp", example: "Call the emergency number immediately." },
+        { word: "diagnosis", meaning: "Chẩn đoán", example: "The diagnosis was confirmed after tests." },
+        { word: "treatment", meaning: "Điều trị", example: "The patient received treatment for flu." },
+        { word: "therapy", meaning: "Liệu pháp", example: "Physical therapy helps recovery." },
+        { word: "infection", meaning: "Nhiễm trùng", example: "He has a bacterial infection." },
+        { word: "antibiotic", meaning: "Thuốc kháng sinh", example: "The doctor prescribed antibiotics." },
+        { word: "clinic", meaning: "Phòng khám", example: "Visit the clinic for check-ups." },
+        { word: "blood test", meaning: "Xét nghiệm máu", example: "The blood test results are normal." },
+        { word: "X-ray", meaning: "Chụp X-quang", example: "The X-ray shows no fractures." },
+        { word: "scan", meaning: "Quét / Chụp", example: "The MRI scan was completed." },
+        { word: "emergency room", meaning: "Phòng cấp cứu", example: "Patients are rushed to the emergency room." },
+        { word: "ICU", meaning: "Phòng chăm sóc đặc biệt", example: "The patient was moved to ICU." },
+        { word: "ward", meaning: "Khoa / phòng bệnh", example: "The ward has 20 beds." },
+        { word: "pharmacy", meaning: "Nhà thuốc", example: "Buy medicine from the pharmacy." },
+        { word: "blood pressure", meaning: "Huyết áp", example: "Monitor your blood pressure daily." },
+        { word: "pulse", meaning: "Nhịp tim", example: "Check the patient's pulse." },
+        { word: "temperature", meaning: "Nhiệt độ cơ thể", example: "The temperature is 37°C." },
+        { word: "injury", meaning: "Chấn thương", example: "He suffered a leg injury." },
+        { word: "bandage", meaning: "Băng gạc", example: "Apply a bandage to the wound." },
+        { word: "cast", meaning: "Bó bột", example: "The broken arm is in a cast." },
+        { word: "rehabilitation", meaning: "Phục hồi chức năng", example: "Rehabilitation is necessary after surgery." },
+        { word: "check-up", meaning: "Khám tổng quát", example: "Schedule an annual check-up." },
+        { word: "health insurance", meaning: "Bảo hiểm y tế", example: "Health insurance covers hospital costs." },
+        { word: "diet", meaning: "Chế độ ăn", example: "Maintain a healthy diet." },
+        { word: "exercise", meaning: "Tập thể dục", example: "Regular exercise improves health." },
+        { word: "mental health", meaning: "Sức khỏe tinh thần", example: "Mental health is equally important." },
+        { word: "nutrition", meaning: "Dinh dưỡng", example: "Nutrition affects overall wellbeing." },
+        { word: "allergy", meaning: "Dị ứng", example: "She has a peanut allergy." },
+        { word: "chronic disease", meaning: "Bệnh mãn tính", example: "Diabetes is a chronic disease." },
+        { word: "emergency kit", meaning: "Bộ dụng cụ cứu thương", example: "Keep an emergency kit at home." },
+        { word: "first aid", meaning: "Sơ cứu", example: "Learn first aid techniques." },
+        { word: "vaccination", meaning: "Tiêm chủng", example: "Vaccination prevents many diseases." },
+        { word: "sanitation", meaning: "Vệ sinh", example: "Proper sanitation prevents infection." },
+        { word: "contagious", meaning: "Dễ lây", example: "Flu is highly contagious." },
+        { word: "emergency contact", meaning: "Người liên hệ khẩn cấp", example: "Provide an emergency contact number." },
+        { word: "symptom check", meaning: "Kiểm tra triệu chứng", example: "Use the app for symptom check." },
+        { word: "recovery period", meaning: "Thời gian hồi phục", example: "Recovery period lasts two weeks." },
+        { word: "ICU nurse", meaning: "Y tá ICU", example: "The ICU nurse monitors patients closely." }
+      ]
     }
   ];
 
@@ -372,7 +988,7 @@ export const seedLessons = async () => {
 
   const lessons = lessonFiles.map((file, index) => ({
     title: lessonTitles[index] || `Bài ${index + 1}`,
-    path: `src/resources/lessons/${file}`,
+    path: `src/storage/lessons/${file}`,
     content: ``,
     type: index < 5 ? "vocabulary" : "reading",
     views: Math.floor(Math.random() * (185 - 100 + 1)) + 100,
@@ -390,30 +1006,210 @@ export const seedScoreMappings = async () => {
   const mappings = [];
 
   const listeningMapping = [
-    { correctAnswers: 0, scaledScore: 5 },
-    { correctAnswers: 10, scaledScore: 55 },
+    { correctAnswers: 0, scaledScore: 0 },
+    { correctAnswers: 1, scaledScore: 15 },
+    { correctAnswers: 2, scaledScore: 20 },
+    { correctAnswers: 3, scaledScore: 25 },
+    { correctAnswers: 4, scaledScore: 30 },
+    { correctAnswers: 5, scaledScore: 35 },
+    { correctAnswers: 6, scaledScore: 40 },
+    { correctAnswers: 7, scaledScore: 45 },
+    { correctAnswers: 8, scaledScore: 50 },
+    { correctAnswers: 9, scaledScore: 55 },
+    { correctAnswers: 10, scaledScore: 60 },
+    { correctAnswers: 11, scaledScore: 65 },
+    { correctAnswers: 12, scaledScore: 70 },
+    { correctAnswers: 13, scaledScore: 75 },
+    { correctAnswers: 14, scaledScore: 80 },
+    { correctAnswers: 15, scaledScore: 85 },
+    { correctAnswers: 16, scaledScore: 90 },
+    { correctAnswers: 17, scaledScore: 95 },
+    { correctAnswers: 18, scaledScore: 100 },
+    { correctAnswers: 19, scaledScore: 105 },
     { correctAnswers: 20, scaledScore: 110 },
-    { correctAnswers: 30, scaledScore: 170 },
-    { correctAnswers: 40, scaledScore: 230 },
-    { correctAnswers: 50, scaledScore: 285 },
-    { correctAnswers: 60, scaledScore: 345 },
-    { correctAnswers: 70, scaledScore: 400 },
-    { correctAnswers: 80, scaledScore: 455 },
-    { correctAnswers: 90, scaledScore: 485 },
+    { correctAnswers: 21, scaledScore: 115 },
+    { correctAnswers: 22, scaledScore: 120 },
+    { correctAnswers: 23, scaledScore: 125 },
+    { correctAnswers: 24, scaledScore: 130 },
+    { correctAnswers: 25, scaledScore: 135 },
+    { correctAnswers: 26, scaledScore: 140 },
+    { correctAnswers: 27, scaledScore: 145 },
+    { correctAnswers: 28, scaledScore: 150 },
+    { correctAnswers: 29, scaledScore: 155 },
+    { correctAnswers: 30, scaledScore: 160 },
+    { correctAnswers: 31, scaledScore: 165 },
+    { correctAnswers: 32, scaledScore: 170 },
+    { correctAnswers: 33, scaledScore: 175 },
+    { correctAnswers: 34, scaledScore: 180 },
+    { correctAnswers: 35, scaledScore: 185 },
+    { correctAnswers: 36, scaledScore: 190 },
+    { correctAnswers: 37, scaledScore: 195 },
+    { correctAnswers: 38, scaledScore: 200 },
+    { correctAnswers: 39, scaledScore: 205 },
+    { correctAnswers: 40, scaledScore: 210 },
+    { correctAnswers: 41, scaledScore: 215 },
+    { correctAnswers: 42, scaledScore: 220 },
+    { correctAnswers: 43, scaledScore: 225 },
+    { correctAnswers: 44, scaledScore: 230 },
+    { correctAnswers: 45, scaledScore: 235 },
+    { correctAnswers: 46, scaledScore: 240 },
+    { correctAnswers: 47, scaledScore: 245 },
+    { correctAnswers: 48, scaledScore: 250 },
+    { correctAnswers: 49, scaledScore: 255 },
+    { correctAnswers: 50, scaledScore: 260 },
+    { correctAnswers: 51, scaledScore: 265 },
+    { correctAnswers: 52, scaledScore: 270 },
+    { correctAnswers: 53, scaledScore: 275 },
+    { correctAnswers: 54, scaledScore: 280 },
+    { correctAnswers: 55, scaledScore: 285 },
+    { correctAnswers: 56, scaledScore: 290 },
+    { correctAnswers: 57, scaledScore: 295 },
+    { correctAnswers: 58, scaledScore: 300 },
+    { correctAnswers: 59, scaledScore: 305 },
+    { correctAnswers: 60, scaledScore: 310 },
+    { correctAnswers: 61, scaledScore: 315 },
+    { correctAnswers: 62, scaledScore: 320 },
+    { correctAnswers: 63, scaledScore: 325 },
+    { correctAnswers: 64, scaledScore: 330 },
+    { correctAnswers: 65, scaledScore: 335 },
+    { correctAnswers: 66, scaledScore: 340 },
+    { correctAnswers: 67, scaledScore: 345 },
+    { correctAnswers: 68, scaledScore: 350 },
+    { correctAnswers: 69, scaledScore: 355 },
+    { correctAnswers: 70, scaledScore: 360 },
+    { correctAnswers: 71, scaledScore: 365 },
+    { correctAnswers: 72, scaledScore: 370 },
+    { correctAnswers: 73, scaledScore: 375 },
+    { correctAnswers: 74, scaledScore: 380 },
+    { correctAnswers: 75, scaledScore: 385 },
+    { correctAnswers: 76, scaledScore: 395 },
+    { correctAnswers: 77, scaledScore: 400 },
+    { correctAnswers: 78, scaledScore: 405 },
+    { correctAnswers: 79, scaledScore: 410 },
+    { correctAnswers: 80, scaledScore: 415 },
+    { correctAnswers: 81, scaledScore: 420 },
+    { correctAnswers: 82, scaledScore: 425 },
+    { correctAnswers: 83, scaledScore: 430 },
+    { correctAnswers: 84, scaledScore: 435 },
+    { correctAnswers: 85, scaledScore: 440 },
+    { correctAnswers: 86, scaledScore: 445 },
+    { correctAnswers: 87, scaledScore: 450 },
+    { correctAnswers: 88, scaledScore: 455 },
+    { correctAnswers: 89, scaledScore: 460 },
+    { correctAnswers: 90, scaledScore: 465 },
+    { correctAnswers: 91, scaledScore: 470 },
+    { correctAnswers: 92, scaledScore: 475 },
+    { correctAnswers: 93, scaledScore: 480 },
+    { correctAnswers: 94, scaledScore: 485 },
+    { correctAnswers: 95, scaledScore: 490 },
+    { correctAnswers: 96, scaledScore: 495 },
+    { correctAnswers: 97, scaledScore: 495 },
+    { correctAnswers: 98, scaledScore: 495 },
+    { correctAnswers: 99, scaledScore: 495 },
     { correctAnswers: 100, scaledScore: 495 },
   ];
 
   const readingMapping = [
-    { correctAnswers: 0, scaledScore: 5 },
-    { correctAnswers: 10, scaledScore: 60 },
-    { correctAnswers: 20, scaledScore: 120 },
-    { correctAnswers: 30, scaledScore: 175 },
-    { correctAnswers: 40, scaledScore: 230 },
-    { correctAnswers: 50, scaledScore: 285 },
-    { correctAnswers: 60, scaledScore: 340 },
-    { correctAnswers: 70, scaledScore: 390 },
-    { correctAnswers: 80, scaledScore: 440 },
-    { correctAnswers: 90, scaledScore: 480 },
+    { correctAnswers: 0, scaledScore: 0 },
+    { correctAnswers: 1, scaledScore: 5 },
+    { correctAnswers: 2, scaledScore: 5 },
+    { correctAnswers: 3, scaledScore: 10 },
+    { correctAnswers: 4, scaledScore: 15 },
+    { correctAnswers: 5, scaledScore: 20 },
+    { correctAnswers: 6, scaledScore: 25 },
+    { correctAnswers: 7, scaledScore: 30 },
+    { correctAnswers: 8, scaledScore: 35 },
+    { correctAnswers: 9, scaledScore: 40 },
+    { correctAnswers: 10, scaledScore: 45 },
+    { correctAnswers: 11, scaledScore: 50 },
+    { correctAnswers: 12, scaledScore: 55 },
+    { correctAnswers: 13, scaledScore: 60 },
+    { correctAnswers: 14, scaledScore: 65 },
+    { correctAnswers: 15, scaledScore: 70 },
+    { correctAnswers: 16, scaledScore: 75 },
+    { correctAnswers: 17, scaledScore: 80 },
+    { correctAnswers: 18, scaledScore: 85 },
+    { correctAnswers: 19, scaledScore: 90 },
+    { correctAnswers: 20, scaledScore: 95 },
+    { correctAnswers: 21, scaledScore: 100 },
+    { correctAnswers: 22, scaledScore: 105 },
+    { correctAnswers: 23, scaledScore: 110 },
+    { correctAnswers: 24, scaledScore: 115 },
+    { correctAnswers: 25, scaledScore: 120 },
+    { correctAnswers: 26, scaledScore: 125 },
+    { correctAnswers: 27, scaledScore: 130 },
+    { correctAnswers: 28, scaledScore: 135 },
+    { correctAnswers: 29, scaledScore: 140 },
+    { correctAnswers: 30, scaledScore: 145 },
+    { correctAnswers: 31, scaledScore: 150 },
+    { correctAnswers: 32, scaledScore: 155 },
+    { correctAnswers: 33, scaledScore: 160 },
+    { correctAnswers: 34, scaledScore: 165 },
+    { correctAnswers: 35, scaledScore: 170 },
+    { correctAnswers: 36, scaledScore: 175 },
+    { correctAnswers: 37, scaledScore: 180 },
+    { correctAnswers: 38, scaledScore: 185 },
+    { correctAnswers: 39, scaledScore: 190 },
+    { correctAnswers: 40, scaledScore: 195 },
+    { correctAnswers: 41, scaledScore: 200 },
+    { correctAnswers: 42, scaledScore: 205 },
+    { correctAnswers: 43, scaledScore: 210 },
+    { correctAnswers: 44, scaledScore: 215 },
+    { correctAnswers: 45, scaledScore: 220 },
+    { correctAnswers: 46, scaledScore: 225 },
+    { correctAnswers: 47, scaledScore: 230 },
+    { correctAnswers: 48, scaledScore: 235 },
+    { correctAnswers: 49, scaledScore: 240 },
+    { correctAnswers: 50, scaledScore: 245 },
+    { correctAnswers: 51, scaledScore: 250 },
+    { correctAnswers: 52, scaledScore: 255 },
+    { correctAnswers: 53, scaledScore: 260 },
+    { correctAnswers: 54, scaledScore: 265 },
+    { correctAnswers: 55, scaledScore: 270 },
+    { correctAnswers: 56, scaledScore: 275 },
+    { correctAnswers: 57, scaledScore: 280 },
+    { correctAnswers: 58, scaledScore: 285 },
+    { correctAnswers: 59, scaledScore: 290 },
+    { correctAnswers: 60, scaledScore: 295 },
+    { correctAnswers: 61, scaledScore: 300 },
+    { correctAnswers: 62, scaledScore: 305 },
+    { correctAnswers: 63, scaledScore: 310 },
+    { correctAnswers: 64, scaledScore: 315 },
+    { correctAnswers: 65, scaledScore: 320 },
+    { correctAnswers: 66, scaledScore: 325 },
+    { correctAnswers: 67, scaledScore: 330 },
+    { correctAnswers: 68, scaledScore: 335 },
+    { correctAnswers: 69, scaledScore: 340 },
+    { correctAnswers: 70, scaledScore: 345 },
+    { correctAnswers: 71, scaledScore: 350 },
+    { correctAnswers: 72, scaledScore: 355 },
+    { correctAnswers: 73, scaledScore: 360 },
+    { correctAnswers: 74, scaledScore: 365 },
+    { correctAnswers: 75, scaledScore: 370 },
+    { correctAnswers: 76, scaledScore: 375 },
+    { correctAnswers: 77, scaledScore: 380 },
+    { correctAnswers: 78, scaledScore: 385 },
+    { correctAnswers: 79, scaledScore: 390 },
+    { correctAnswers: 80, scaledScore: 395 },
+    { correctAnswers: 81, scaledScore: 400 },
+    { correctAnswers: 82, scaledScore: 405 },
+    { correctAnswers: 83, scaledScore: 410 },
+    { correctAnswers: 84, scaledScore: 415 },
+    { correctAnswers: 85, scaledScore: 420 },
+    { correctAnswers: 86, scaledScore: 425 },
+    { correctAnswers: 87, scaledScore: 430 },
+    { correctAnswers: 88, scaledScore: 435 },
+    { correctAnswers: 89, scaledScore: 440 },
+    { correctAnswers: 90, scaledScore: 445 },
+    { correctAnswers: 91, scaledScore: 450 },
+    { correctAnswers: 92, scaledScore: 455 },
+    { correctAnswers: 93, scaledScore: 460 },
+    { correctAnswers: 94, scaledScore: 465 },
+    { correctAnswers: 95, scaledScore: 470 },
+    { correctAnswers: 96, scaledScore: 475 },
+    { correctAnswers: 97, scaledScore: 480 },
+    { correctAnswers: 98, scaledScore: 485 },
+    { correctAnswers: 99, scaledScore: 490 },
     { correctAnswers: 100, scaledScore: 495 },
   ];
 
@@ -442,28 +1238,6 @@ export const seedScoreMappings = async () => {
       effectiveFrom: new Date(),
       createdBy: null // System generated
     });
-  }
-
-  // Fill in intermediate values
-  for (let section of ['listening', 'reading']) {
-    const sectionMappings = mappings.filter(m => m.section === section);
-
-    for (let i = 0; i < 100; i++) {
-      if (!sectionMappings.find(m => m.correctAnswers === i)) {
-        // Interpolate score
-        const score = estimateScore(section, i);
-        mappings.push({
-          section,
-          correctAnswers: i,
-          scaledScore: score,
-          version: 'estimated-v1',
-          source: 'Custom',
-          isActive: true,
-          effectiveFrom: new Date(),
-          createdBy: null
-        });
-      }
-    }
   }
 
   try {

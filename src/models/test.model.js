@@ -10,7 +10,7 @@ const testSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true },
   slug: { type: String, slug: 'title', required: false, unique: true, lowercase: true, trim: true },
   audio: { type: String, required: true, trim: true },
-  testCode: { type: String, required: true, unique: true, trim: true },
+  testCode: { type: String, unique: true, trim: true },
   description: { type: String },
 
   isActive: { type: Boolean, required: true, default: true },
@@ -36,7 +36,7 @@ const testSchema = new mongoose.Schema({
   // Thống kê
   statistics: {
     totalAttempts: { type: Number, default: 0 },
-    totalComments: {type: Number, default: 0},
+    totalComments: { type: Number, default: 0 },
     completedAttempts: { type: Number, default: 0 },
     averageScore: { type: Number, default: 0 },
     averageAccuracy: { type: Number, default: 0 },
@@ -67,5 +67,37 @@ const testSchema = new mongoose.Schema({
   },
 },
   { timestamps: true });
+
+// generate testCode
+testSchema.pre("save", async function (next) {
+  if (this.isNew && !this.testCode) {
+    try {
+      // get last testCode
+      const lastTest = await mongoose.model('Test').findOne({ testCode: /^TOEIC-\d+$/ })
+        .sort({ createdAt: -1 })
+        .lean();
+      let nextNumber = 1;
+
+      if (lastTest && lastTest.testCode) {
+        // get number of testCode
+        const match = lastTest.testCode.match(/^TOEIC-(\d+)$/);
+        if (match) {
+          const lastNumber = parseInt(match[1], 10);
+          if (!isNaN(lastNumber)) {
+            nextNumber = lastNumber + 1;
+          }
+        }
+      }
+
+      // format
+      this.testCode = `TOEIC-${String(nextNumber).padStart(3, '0')}`;
+      next();
+    } catch (err) {
+      next(err);
+    }
+  } else {
+    next();
+  }
+});
 
 export default mongoose.model('Test', testSchema);

@@ -1,4 +1,7 @@
+import redisClient from "../config/redis.config.js";
+import notificationModel from "../models/notification.model.js";
 import Notification from "../models/notification.model.js";
+import userModel from "../models/user.model.js";
 
 class NotificationService {
     constructor(io, onlineUsers) {
@@ -9,6 +12,76 @@ class NotificationService {
         // Notification.on('notification:created', (notification) => {
         //     this.sendViaSocket(notification);
         // });
+    }
+
+    async sendVIPExpiryNotification() {
+        const users = await userModel.find({ "vip.isActive": true, "vip.endDate": { $ne: null } });
+
+        if (users.length === 0) {
+            console.log("Không có người dùng nào có gói VIP còn hiệu lực.");
+            return;
+        }
+
+        const now = new Date();
+
+        // Đặt thời gian của các đối tượng Date về 00:00:00.000 để chỉ tính ngày
+        now.setHours(0, 0, 0, 0);
+
+        // Kiểm tra nếu có người dùng nào có gói VIP sắp hết hạn và gửi thông báo cho họ
+        for (const user of users) {
+            if (!user.vip || !user.vip.endDate) {
+                console.log(`Gói VIP không có ngày hết hạn cho người dùng ${user.fullname}.`);
+                continue;
+            }
+
+            const endDate = new Date(user.vip.endDate);
+            const twelveHoursBeforeExpiry = new Date(endDate);
+            twelveHoursBeforeExpiry.setDate(endDate.getDate() - 1);  // 1 ngày trước khi hết hạn
+
+            // Đặt thời gian của các đối tượng Date về 00:00:00.000 để chỉ tính ngày
+            twelveHoursBeforeExpiry.setHours(0, 0, 0, 0);
+            endDate.setHours(0, 0, 0, 0);
+
+            console.log(`End date: ${endDate}`);
+            console.log(`Twelve hours before expiry: ${twelveHoursBeforeExpiry}`);
+            console.log(`Now: ${now}`);
+
+            // Kiểm tra nếu gói VIP còn hiệu lực và nếu hiện tại là một ngày trước khi hết hạn
+            if (now >= twelveHoursBeforeExpiry && now < endDate) {
+                const todayKey = `vipExpiryNotificationSent:${now.toISOString().slice(0, 10)}`;
+
+                const existingNotification = await notificationModel.findOne({
+                    recipientId: user._id,
+                    type: 'system',
+                    title: 'Gói VIP sắp hết hạn',
+                    createdAt: {
+                        $gte: now, // Check xem có thông báo nào trong ngày hôm nay chưa
+                        $lt: new Date(now.getTime() + 24 * 60 * 60 * 1000) // Chỉ tìm thông báo trong ngày
+                    }
+                });
+
+                if (existingNotification) {
+                    console.log(`Thông báo VIP đã được gửi cho người dùng ${user.fullname} hôm nay, không gửi lại.`);
+                    continue;
+                }
+
+                const notification = await this.createAndSend({
+                    recipientId: user._id,
+                    senderId: null,
+                    type: "system", 
+                    title: "Gói VIP sắp hết hạn", 
+                    message: `Gói VIP của bạn sẽ hết hạn vào ngày ${endDate.toLocaleDateString()}. Hãy gia hạn ngay để tiếp tục sử dụng các tính năng VIP!`,
+                    priority: "high", 
+                    actionUrl: "/payment"
+                });
+
+                console.log(`Thông báo VIP sắp hết hạn đã được gửi tới người dùng ${user.fullname}`);
+                await redisClient.set(todayKey, "true", "EX", 86400);
+            } else {
+                console.log(`Không gửi thông báo VIP cho người dùng ${user.fullname}.`);
+            }
+        }
+        return [];
     }
 
     /**
