@@ -35,19 +35,20 @@ class NotificationService {
             }
 
             const endDate = new Date(user.vip.endDate);
-            const twelveHoursBeforeExpiry = new Date(endDate);
-            twelveHoursBeforeExpiry.setDate(endDate.getDate() - 1);  // 1 ngày trước khi hết hạn
+            // Tính ngày hết hạn (đặt về 00:00:00)
+            const endDateAtMidnight = new Date(endDate);
+            endDateAtMidnight.setHours(0, 0, 0, 0);
 
-            // Đặt thời gian của các đối tượng Date về 00:00:00.000 để chỉ tính ngày
-            twelveHoursBeforeExpiry.setHours(0, 0, 0, 0);
-            endDate.setHours(0, 0, 0, 0);
+            // Tính ngày cảnh báo: 1 ngày trước khi hết hạn
+            const alertDate = new Date(endDateAtMidnight);
+            alertDate.setDate(alertDate.getDate() - 1);
 
-            console.log(`End date: ${endDate}`);
-            console.log(`Twelve hours before expiry: ${twelveHoursBeforeExpiry}`);
+            console.log(`End date: ${endDateAtMidnight}`);
+            console.log(`Alert date (1 day before expiry): ${alertDate}`);
             console.log(`Now: ${now}`);
 
-            // Kiểm tra nếu gói VIP còn hiệu lực và nếu hiện tại là một ngày trước khi hết hạn
-            if (now >= twelveHoursBeforeExpiry && now < endDate) {
+            // Gửi cảnh báo nếu: hiện tại >= ngày cảnh báo AND hiện tại <= ngày hết hạn
+            if (now >= alertDate && now <= endDateAtMidnight) {
                 const todayKey = `vipExpiryNotificationSent:${now.toISOString().slice(0, 10)}`;
 
                 const existingNotification = await notificationModel.findOne({
