@@ -167,8 +167,11 @@ export const analyzeResult = async (req, res) => {
       - Tuyệt đối không chèn nội dung thô tục, xúc phạm, quảng cáo hay bình luận về danh tính người học.
       - Không hỏi thêm câu hỏi; không đề xuất dịch vụ/đường link.
       - Trả lời **tiếng Việt** thuần, KHÔNG dùng markdown, không in đậm, không gạch đầu dòng kiểu markdown.
-      - Với mỗi mục thì nên tóm tắt ngắn gọn, dễ hiểu và xuống dòng chứ thành 1 đoạn.
-      - Trả lời ngắn gọn, trọng tâm; mỗi phần tối đa ~2–4 câu. Toàn bộ phản hồi không quá 300 từ.
+      - Giọng văn tích cực, trung lập, mang tính huấn luyện; tránh từ ngữ tiêu cực tuyệt đối như "không có khả năng", "không thể".
+      - Khi điểm thấp, diễn đạt theo hướng "chưa hình thành nền tảng" hoặc "cần xây dựng lại từ đầu".
+      - Mỗi câu chỉ truyền tải 1 ý chính và nên có 1 dấu + trước để thể hiện đó là 1 ý.
+      - Mỗi dòng nên ngắn, dễ đọc, ưu tiên câu 10–18 từ.
+      - Cho phép xuống dòng nhiều để tạo khoảng thở thị giác.
       - Sắp xếp kết quả theo 3 mục rõ ràng (viết có số thứ tự 1→3): điểm mạnh, điểm yếu (cụ thể theo phần), gợi ý cải thiện.
 
       BẢNG DỮ LIỆU CHUẨN ETS (sử dụng để phân tích, map levels, descriptors):
@@ -193,10 +196,10 @@ export const analyzeResult = async (req, res) => {
         .join("\n")}
 
       YÊU CẦU PHÂN TÍCH:
-      1. Phân tích tình hình hiện tại theo chuẩn TOEIC/CEFR (rất ngắn, dùng descriptors từ bảng).
-      2. Nêu điểm yếu, phân tách rõ Listening / Reading nếu có (dựa trên min scores).
+      1. Phân tích tình hình hiện tại theo chuẩn TOEIC/CEFR (rất ngắn, dùng descriptors từ bảng). Hãy nêu điểm mạnh trước hợp lý và có cơ sở.
+      2. Nêu điểm yếu, phân tách rõ Listening / Reading nếu có (dựa trên min scores). Phân tích chi tiết theo từng part nếu có thể.
       3. Gợi ý cải thiện cụ thể, thực hành/nguồn học hoặc loại bài nên luyện (mỗi gợi ý 1 câu, từ COMMON_ADVICE). Thêm 1 câu này, bạn có thể tham khảo các gói nâng cấp tài khoản để trải nghiệm nhiều ưu đãi hơn và xem được nhiều bài học mới, tăng số lượng tạo flashcard.
-      1 câu động viên khích lệ.
+      1 câu động viên khích lệ. Sau đó kết thúc bằng lời chào thân thiện.
 
       Chỉ trả về nội dung theo cấu trúc trên, không thêm chú thích, không in thêm meta hoặc JSON.
   `;
