@@ -64,9 +64,9 @@ export const googleLogin = async (req, res) => {
             sameSite: config.cookieSameSite,
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
         });
-
+        
         return success(res, 'Đăng nhập google thành công', { 
-            user: { fullname: user.fullname, email : user.email, avatarUrl: user.avatarUrl },
+            user: { id: user.id, fullname: user.fullname, email : user.email, avatarUrl: user.avatarUrl },
             accessToken
         });
     } catch (err) {
