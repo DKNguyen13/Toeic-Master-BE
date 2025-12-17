@@ -2,6 +2,7 @@
 node_modules/
 
 # src/storage/lessons
+src/storage/lessons
 
 # Logs
 logs/
