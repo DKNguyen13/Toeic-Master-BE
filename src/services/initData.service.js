@@ -1013,7 +1013,7 @@ export const seedLessons = async () => {
     "Bài 17: Thay đổi lịch họp",
     "Bài 18: Thông báo cải tạo văn phòng",
     "Bài 19: Email đăng ký khóa đào tạo",
-    "Bài 20: Bản ghi nhớ về việc hoàn trả chi phí đi lại",
+    "Bài 20: Hoàn trả chi phí đi lại",
   ];
 
   const lessons = lessonFiles.map((file, index) => ({
