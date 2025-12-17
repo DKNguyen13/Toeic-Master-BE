@@ -1008,6 +1008,12 @@ export const seedLessons = async () => {
     "Bài 12: Đọc hiểu tin tức danh nghiệp",
     "Bài 13: Luyện đọc hiểu (tt)",
     "Bài 14: Luyện đọc hiểu nâng cao",
+    "Bài 15: Cập nhật chính sách công ty",
+    "Bài 16: Email dịch vụ khách hàng",
+    "Bài 17: Thay đổi lịch họp",
+    "Bài 18: Thông báo cải tạo văn phòng",
+    "Bài 19: Email đăng ký khóa đào tạo",
+    "Bài 20: Bản ghi nhớ về việc hoàn trả chi phí đi lại",
   ];
 
   const lessons = lessonFiles.map((file, index) => ({
@@ -1015,7 +1021,7 @@ export const seedLessons = async () => {
     path: `src/storage/lessons/${file}`,
     content: ``,
     type: index < 10 ? "vocabulary" : "reading",
-    views: Math.floor(Math.random() * 500) + 300,
+    views: Math.floor(Math.random() * 600) + 400,
     accessLevel: getAccessLevelByIndex(index),
     createdBy: null,
     isDeleted: false,
