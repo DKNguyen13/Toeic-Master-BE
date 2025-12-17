@@ -969,6 +969,26 @@ export const seedLessons = async () => {
     return;
   }
 
+  const ACCESS_LEVEL_CONFIG = [
+    { level: "free", count: 4 },
+    { level: "basic", count: 4 },
+    { level: "advanced", count: 4 },
+    { level: "premium", count: Infinity }
+  ];
+
+  const getAccessLevelByIndex = (index) => {
+    let currentIndex = 0;
+
+    for (const config of ACCESS_LEVEL_CONFIG) {
+      currentIndex += config.count;
+      if (index < currentIndex) {
+        return config.level;
+      }
+    }
+
+    return "premium";
+  };
+
   // Folder chứa HTML bài học
   const lessonsDir = path.join(__dirname, "../Toeic-Master-BE/src/storage/lessons");
   const lessonFiles = fs.readdirSync(lessonsDir).filter(f => f.endsWith(".html"));
@@ -978,27 +998,37 @@ export const seedLessons = async () => {
     "Bài 2: Ngữ pháp cơ bản",
     "Bài 3: Mẫu câu giao tiếp, email",
     "Bài 4: Từ vựng & hội thoại thương mại",
-    "Bài 5: Tổng hợp từ vựng nâng cao",
-    "Bài 6: Đọc hiểu văn bản thương mại",
-    "Bài 7: Đọc hiểu tin tức danh nghiệp",
-    "Bài 8: Luyện đọc hiểu (tt)",
-    "Bài 9: Luyện đọc hiểu nâng cao",
-    "Bài 10: Luyện đọc hiểu nâng cao (tt)"
+    "Bài 5: Văn phòng & Thiết bị",
+    "Bài 6: Du lịch công tác & Phương tiện",
+    "Bài 7: Tài chính & Thanh toán",
+    "Bài 8: Nhân sự & Nhân viên",
+    "Bài 9: Tiếp thị & Bán hàng",
+    "Bài 10: Tổng hợp từ vựng nâng cao",
+    "Bài 11: Đọc hiểu văn bản thương mại",
+    "Bài 12: Đọc hiểu tin tức danh nghiệp",
+    "Bài 13: Luyện đọc hiểu (tt)",
+    "Bài 14: Luyện đọc hiểu nâng cao",
+    "Bài 15: Cập nhật chính sách công ty",
+    "Bài 16: Email dịch vụ khách hàng",
+    "Bài 17: Thay đổi lịch họp",
+    "Bài 18: Thông báo cải tạo văn phòng",
+    "Bài 19: Email đăng ký khóa đào tạo",
+    "Bài 20: Hoàn trả chi phí đi lại",
   ];
 
   const lessons = lessonFiles.map((file, index) => ({
     title: lessonTitles[index] || `Bài ${index + 1}`,
     path: `src/storage/lessons/${file}`,
     content: ``,
-    type: index < 5 ? "vocabulary" : "reading",
-    views: Math.floor(Math.random() * (185 - 100 + 1)) + 100,
-    accessLevel: index < 5 ? "free" : "basic",
+    type: index < 10 ? "vocabulary" : "reading",
+    views: Math.floor(Math.random() * 600) + 400,
+    accessLevel: getAccessLevelByIndex(index),
     createdBy: null,
     isDeleted: false,
   }));
 
   await Lesson.insertMany(lessons);
-  console.log(`Seeded ${lessons.length} lessons (paths only) successfully!`);
+  console.log(`Seeded ${lessons.length} lessons successfully!`);
 };
 
 // Seed score mappings
