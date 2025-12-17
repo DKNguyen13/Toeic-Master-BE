@@ -149,7 +149,7 @@ export const getLessonById = async (req, res) => {
     const userLevelIndex = levels.indexOf(userLevel);
     const lessonLevelIndex = levels.indexOf(lesson.accessLevel || "free");
 
-    if (userLevelIndex < lessonLevelIndex) return error(res, "Bạn chưa đủ quyền để xem bài học này, vui lòng nâng cấp tài khoản!", 403);
+    if (userLevelIndex < lessonLevelIndex) return error(res, "Bạn chưa đủ quyền để xem bài học này, vui lòng nâng cấp tài khoản!", 403, { accessLevel: lesson.accessLevel });
 
     const favoriteCount = await Wishlist.countDocuments({ lesson: lesson._id });
 
