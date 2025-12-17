@@ -132,6 +132,14 @@ export const analyzeResult = async (req, res) => {
     answers
   } = req.body;
 
+  if (!summary) {
+    return res.status(400).json({ message: "Thiếu summary" });
+  }
+
+  if (!Array.isArray(answers) || answers.length === 0) {
+    return res.status(400).json({ message: "Danh sách answers không hợp lệ" });
+  }
+
   const partStats = {};
 
   answers.forEach(a => {
@@ -159,6 +167,7 @@ export const analyzeResult = async (req, res) => {
       - Tuyệt đối không chèn nội dung thô tục, xúc phạm, quảng cáo hay bình luận về danh tính người học.
       - Không hỏi thêm câu hỏi; không đề xuất dịch vụ/đường link.
       - Trả lời **tiếng Việt** thuần, KHÔNG dùng markdown, không in đậm, không gạch đầu dòng kiểu markdown.
+      - Với mỗi mục thì nên tóm tắt ngắn gọn, dễ hiểu và xuống dòng chứ thành 1 đoạn.
       - Trả lời ngắn gọn, trọng tâm; mỗi phần tối đa ~2–4 câu. Toàn bộ phản hồi không quá 300 từ.
       - Sắp xếp kết quả theo 3 mục rõ ràng (viết có số thứ tự 1→3): điểm mạnh, điểm yếu (cụ thể theo phần), gợi ý cải thiện.
 
