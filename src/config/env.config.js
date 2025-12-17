@@ -51,7 +51,10 @@ export const config = {
 
     // Gemini AI
     geminiApiKey: process.env.GEMINI_API_KEY,
-
+    
+    // GroqCloud AI
+    groqApiKey: process.env.GROQ_API_KEY,
+    
     // Ollama
     ollamaApiKey: process.env.OLLAMA_API_KEY,
     ollama_model: process.env.OLLAMA_MODEL,
