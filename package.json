@@ -21,6 +21,7 @@
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
     "express-rate-limit": "^8.1.0",
+    "fuse.js": "^7.1.0",
     "google-auth-library": "^10.3.0",
     "groq-sdk": "^0.37.0",
     "jsonwebtoken": "^9.0.2",
