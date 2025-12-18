@@ -110,7 +110,7 @@ export const googleLoginService = async ({ tokenId }) => {
 export const registerService = async ({ fullname, email, password, phone, dob, avatarUrl, otp }) => {
     const storedOtp = await redisClient.get(`otp:${email}`);
     
-    if (!storedOtp || storedOtp !== otp) throw new Error('OTP không hợp lệ!');
+    if (!storedOtp || storedOtp !== otp.toString().trim()) throw new Error('OTP không hợp lệ!');
     
     if (await User.findOne( { email }))  throw new Error('Email tồn tại. Vui lòng sử dụng email khác!');
 
@@ -159,10 +159,10 @@ export const sendRegisterOTPService = async (email) => {
     }
 
     const otp = crypto.randomInt(100000, 999999).toString();
-    await redisClient.set(`otp:${email}`, otp, { ex: 60 });// TTL 60 giây
+    await redisClient.set(`otp:${email}`, otp, { ex: 120 });// TTL 120 giây
     await sendOTPEmail(email, otp);
 
-    return { message: "Gửi OTP thành công. Vui lòng kiểm tra email!", cooldown: 60 };
+    return { message: "Gửi OTP thành công. Vui lòng kiểm tra email!", cooldown: 120 };
 };
 
 //Send new password to email
@@ -189,8 +189,8 @@ export const sendOTPService = async (email) => {
 
     await user.save();
     await sendResetPasswordEmail(email, `Mật khẩu mới của bạn là: ${newPassword}`);
-    await redisClient.set(`reset:${email}`, 'sent', { ex: 60 });
-    return { message: 'Mật khẩu mới đã được gửi tới email của bạn!', cooldown: 60 };
+    await redisClient.set(`reset:${email}`, 'sent', { ex: 120 });
+    return { message: 'Mật khẩu mới đã được gửi tới email của bạn!', cooldown: 120 };
 };
 
 // Send support email
