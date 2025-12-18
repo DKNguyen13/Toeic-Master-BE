@@ -50,11 +50,11 @@ export const sendOTPEmail = async (to, otp) => {
         <p style="font-size: 16px;">Bạn đã yêu cầu mã OTP để xác thực tài khoản. Vui lòng sử dụng mã dưới đây:</p>
         <div class="otp-box">${otp}</div>
         <p style="font-size: 16px;">Mã OTP này sẽ hết hạn sau <strong>10 phút</strong>.</p>
-        <p style="font-size: 16px;">Nếu bạn không yêu cầu mã này, vui lòng bỏ qua email hoặc liên hệ với chúng tôi qua <a href="http://localhost:3000/support" style="color: #2a4d9b; text-decoration: none; font-weight: 500;">hỗ trợ</a>.</p>
+        <p style="font-size: 16px;">Nếu bạn không yêu cầu mã này, vui lòng bỏ qua email hoặc liên hệ với chúng tôi qua <a href="https://toeic-master.onrender.com/support" style="color: #2a4d9b; text-decoration: none; font-weight: 500;">hỗ trợ</a>.</p>
       </div>
       <div class="footer">
         <p>&copy; 2025 Toeic Master. Mọi quyền được bảo lưu.</p>
-        <p><a href="http://localhost:3000/support">Liên hệ hỗ trợ</a> | <a href="http://localhost:3000/privacy">Chính sách bảo mật</a></p>
+        <p><a href="${config.frontendUrl}/support">Liên hệ hỗ trợ</a> | <a href="${config.frontendUrl}/privacy">Chính sách bảo mật</a></p>
       </div>
     </div>
   </body>
@@ -111,12 +111,12 @@ export const sendResetPasswordEmail = async (to, newPassword) => {
         <p style="font-size: 16px;">Bạn đã yêu cầu đặt lại mật khẩu. Dưới đây là mật khẩu mới của bạn:</p>
         <div class="password-box">${newPassword}</div>
         <p style="font-size: 16px;">Vui lòng đăng nhập bằng mật khẩu này và đổi mật khẩu ngay sau khi đăng nhập.</p>
-        <p style="font-size: 16px;">Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng liên hệ đội ngũ hỗ trợ qua <a href="http://localhost:3000/support" style="color: #2a4d9b; text-decoration: none; font-weight: 500;">hỗ trợ</a>.</p>
-        <a href="http://localhost:3000/login" class="button">Đăng Nhập Ngay</a>
+        <p style="font-size: 16px;">Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng liên hệ đội ngũ hỗ trợ qua <a href="${config.frontendUrl}/support" style="color: #2a4d9b; text-decoration: none; font-weight: 500;">hỗ trợ</a>.</p>
+        <a href="${config.frontendUrl}/login" class="button">Đăng Nhập Ngay</a>
       </div>
       <div class="footer">
         <p>&copy; 2025 Toeic Master. Mọi quyền được bảo lưu.</p>
-        <p><a href="http://localhost:3000/support">Liên hệ hỗ trợ</a> | <a href="http://localhost:3000/privacy">Chính sách bảo mật</a></p>
+        <p><a href="${config.frontendUrl}/support">Liên hệ hỗ trợ</a> | <a href="${config.frontendUrl}/privacy">Chính sách bảo mật</a></p>
       </div>
     </div>
   </body>
@@ -238,7 +238,7 @@ export const sendSupportEmail = async (fromUserEmail, userName, issueTitle, issu
       </div>
       <div class="footer">
         <p>&copy; 2025 Toeic Master. Mọi quyền được bảo lưu.</p>
-        <p><a href="http://localhost:3000/support">Liên hệ hỗ trợ</a> | <a href="http://localhost:3000/privacy">Chính sách bảo mật</a></p>
+        <p><a href="${config.frontendUrl}/support">Liên hệ hỗ trợ</a> | <a href="${config.frontendUrl}/privacy">Chính sách bảo mật</a></p>
       </div>
     </div>
   </body>
