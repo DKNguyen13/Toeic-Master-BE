@@ -30,9 +30,9 @@ export const config = {
     googleServerCallback: process.env.GOOGLE_SERVER_CALLBACK,
 
     // Cookie options
-    cookieSecure: process.env.COOKIE_SECURE === 'true', // true => chỉ gửi qua https
-    cookieSameSite: process.env.COOKIE_SAMESITE || 'none',
-    cookieHttpOnly: process.env.COOKIE_HTTPONLY !== 'false', // default: true
+    cookieSecure: process.env.COOKIE_SECURE, // true => chỉ gửi qua https
+    cookieSameSite: process.env.COOKIE_SAMESITE,
+    cookieHttpOnly: process.env.COOKIE_HTTPONLY, // default: true
 
     // Cloudinary
     cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME,
