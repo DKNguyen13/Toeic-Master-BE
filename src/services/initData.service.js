@@ -35,7 +35,6 @@ export const testVIPExpiryNotification = async (notificationService) => {
   catch (err){
     console.error("Error test notification:", err);
   }
-
 };
 
 // Resolve stale orders
