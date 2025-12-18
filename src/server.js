@@ -1,4 +1,5 @@
 import cors from 'cors';
+import http from 'http';
 import cron from 'node-cron';
 import express from 'express';
 import cookieParser from 'cookie-parser';
@@ -20,7 +21,7 @@ import analysis from './routes/analysis.route.js';
 import flashcardSetRoutes from './routes/flashcardSet.routes.js';
 import notificationRouter from './routes/notification.routes.js';
 import fillBlankQuestionRouter from './routes/fillBlankQuestion.routes.js';
-import http from 'http';
+
 // Services
 import * as InitData from './services/initData.service.js';
 import NotificationService from "./services/notification.service.js";
@@ -28,22 +29,25 @@ import NotificationService from "./services/notification.service.js";
 // socket
 import { Server } from "socket.io";
 import { initChatbotSocket } from './sockets/chatbot/chatbotSocket.js';
-import { analyzeResult } from './controllers/analysis.controller.js';
 import { initSaveAnswersSocket } from './sockets/saveAnswer/saveAnswerSocket.js';
 
 const app = express()
-
 const server = http.createServer(app);
 
-const corsOptions = {
-  origin: [
-    "https://toeic-master.onrender.com", // user
-    "http://localhost:4000", // admin
-  ],
-  credentials: true,// bắt buộc để gửi cookie
-};
+const allowedOrigins = [
+  config.frontendUrl, // User
+  config.adminUrl, // Admin
+  config.backendUrl, // Backend
+];
 
-app.use(cors(corsOptions));
+if (process.env.NODE_ENV !== 'production') {
+  allowedOrigins.push("http://localhost:3000", "http://localhost:3001", "http://localhost:4000");
+}
+
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
 app.use(express.json());
 app.use(cookieParser());
 
@@ -64,16 +68,20 @@ app.use('/api/notifications', notificationRouter);
 app.use('/api/analysis', analysis);
 app.use('/api/practice', fillBlankQuestionRouter);
 
+app.get('/', (req, res) => {
+  res.json({ message: 'TOEIC Master Backend + Socket.IO is running!' });
+});
+
 await connectDB();
 
-await InitData.createAdminIfNotExist();
-await InitData.seedPackages();
-await InitData.seedLessons();
-await InitData.seedFlashcards();
-await InitData.seedLessons();
-await InitData.syncMeiliUsersOnce();
-//await InitData.initListeningQuestions();
-await InitData.resolveStaleOrders();
+// await InitData.createAdminIfNotExist();
+// await InitData.seedPackages();
+// await InitData.seedLessons();
+// await InitData.seedFlashcards();
+// await InitData.seedLessons();
+// await InitData.syncMeiliUsersOnce();
+// await InitData.initListeningQuestions();
+// await InitData.resolveStaleOrders();
 
 const io = new Server(server, {
     cors: {
@@ -92,7 +100,7 @@ server.listen(config.port, () => {
   console.log(`Server running on port ${config.port}`)
 });
 
-await InitData.testVIPExpiryNotification(notificationService);
+//await InitData.testVIPExpiryNotification(notificationService);
 
 // Cron job kiểm tra ngày hết hạn VIP mỗi ngày vào 00:00 (trong ngày)
 cron.schedule('0 0 * * *', async () => {
