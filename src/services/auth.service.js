@@ -31,8 +31,7 @@ export const adminLoginService = async ({ email, password }) => {
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
 
-    await redisClient.set(`refreshToken:${user._id}`, refreshToken, { EX: 7 * 24 * 60 * 60 });
-
+    await redisClient.set(`refreshToken:${user._id}`, refreshToken, { ex: 7 * 24 * 60 * 60 });
     const safeUser = { id: user._id, fullname: user.fullname, email: user.email, phone: user.phone, avatarUrl: user.avatarUrl, isActive : user.isActive, role: user.role };
     return { user: safeUser, accessToken, refreshToken };
 };
@@ -56,7 +55,7 @@ export const normalLoginService = async ({ email, password }) => {
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
 
-    await redisClient.set(`refreshToken:${user._id}`, refreshToken, { EX: 7 * 24 * 60 * 60 });
+    await redisClient.set(`refreshToken:${user._id}`, refreshToken, { ex: 7 * 24 * 60 * 60 });
 
     const safeUser = { id: user._id, fullname: user.fullname, email: user.email, phone: user.phone, avatarUrl: user.avatarUrl, isActive : user.isActive, role: user.role };
     return { user : safeUser, accessToken, refreshToken };
@@ -103,7 +102,7 @@ export const googleLoginService = async ({ tokenId }) => {
         role: user.role 
     };
     
-    await redisClient.set(`refreshToken:${user.id}`, refreshToken, { EX: 7*24*60*60 });
+    await redisClient.set(`refreshToken:${user.id}`, refreshToken, { ex: 7*24*60*60 });
     return { user: safeUser, accessToken, refreshToken };
 };
 
@@ -160,7 +159,7 @@ export const sendRegisterOTPService = async (email) => {
     }
 
     const otp = crypto.randomInt(100000, 999999).toString();
-    await redisClient.setEx(`otp:${email}`, 60, otp);// TTL 60 giây
+    await redisClient.set(`otp:${email}`, otp, { ex: 60 });// TTL 60 giây
     await sendOTPEmail(email, otp);
 
     return { message: "Gửi OTP thành công. Vui lòng kiểm tra email!", cooldown: 60 };
@@ -190,7 +189,7 @@ export const sendOTPService = async (email) => {
 
     await user.save();
     await sendResetPasswordEmail(email, `Mật khẩu mới của bạn là: ${newPassword}`);
-    await redisClient.setEx(`reset:${email}`, 60, 'sent');
+    await redisClient.set(`reset:${email}`, 'sent', { ex: 60 });
     return { message: 'Mật khẩu mới đã được gửi tới email của bạn!', cooldown: 60 };
 };
 
