@@ -39,8 +39,10 @@ export const config = {
     cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
     cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
 
-    // Frontend url
+    // Website URLs
     frontendUrl: process.env.FRONTEND_URL,
+    adminUrl: process.env.ADMIN_URL,
+    backendUrl: process.env.BACKEND_URL,
 
     // VNPay
     paymentSuccessPath: process.env.PAYMENT_SUCCESS_PATH || "/payment/success",
