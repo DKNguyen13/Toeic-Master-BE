@@ -20,7 +20,7 @@ import analysis from './routes/analysis.route.js';
 import flashcardSetRoutes from './routes/flashcardSet.routes.js';
 import notificationRouter from './routes/notification.routes.js';
 import fillBlankQuestionRouter from './routes/fillBlankQuestion.routes.js';
-
+import http from 'http';
 // Services
 import * as InitData from './services/initData.service.js';
 import NotificationService from "./services/notification.service.js";
@@ -33,9 +33,11 @@ import { initSaveAnswersSocket } from './sockets/saveAnswer/saveAnswerSocket.js'
 
 const app = express()
 
+const server = http.createServer(app);
+
 const corsOptions = {
   origin: [
-    "http://localhost:3000", // user
+    "https://toeic-master.onrender.com", // user
     "http://localhost:4000", // admin
   ],
   credentials: true,// bắt buộc để gửi cookie
@@ -73,20 +75,20 @@ await InitData.syncMeiliUsersOnce();
 //await InitData.initListeningQuestions();
 await InitData.resolveStaleOrders();
 
-const io = new Server(8081, {
+const io = new Server(server, {
     cors: {
         origin: "*",          // Cho phép mọi nguồn truy cập (FE mở file local cũng được)
         methods: ["GET", "POST"]
     }
 });
 
-const onlineUsers = initChatbotSocket(io, { geminiApiKey: config.geminiApiKey });
+const onlineUsers = initChatbotSocket(io, { groqApiKey: config.groqApiKey });
 initSaveAnswersSocket(io);
 
 const notificationService = new NotificationService(io, onlineUsers);
 app.set('notificationService', notificationService);
 
-app.listen(config.port, () => {
+server.listen(config.port, () => {
   console.log(`Server running on port ${config.port}`)
 });
 
