@@ -110,7 +110,7 @@ export const googleLoginService = async ({ tokenId }) => {
 export const registerService = async ({ fullname, email, password, phone, dob, avatarUrl, otp }) => {
     const storedOtp = await redisClient.get(`otp:${email}`);
     
-    if (!storedOtp || storedOtp !== otp.toString().trim()) throw new Error('OTP không hợp lệ!');
+    if (!storedOtp || storedOtp.toString().trim() !== otp.toString().trim()) throw new Error('OTP không hợp lệ!');
     
     if (await User.findOne( { email }))  throw new Error('Email tồn tại. Vui lòng sử dụng email khác!');
 
