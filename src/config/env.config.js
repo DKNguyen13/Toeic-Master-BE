@@ -13,6 +13,7 @@ export const config = {
 
     // Redis
     redisUrl: process.env.REDIS_URL,
+    redisToken: process.env.REDIS_TOKEN,
 
     // Mail
     mailHost: process.env.MAIL_HOST,
