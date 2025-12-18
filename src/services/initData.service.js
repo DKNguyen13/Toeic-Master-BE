@@ -6,7 +6,6 @@ import User from "../models/user.model.js";
 import Lesson from "../models/lesson.model.js";
 import Flashcard from "../models/flashcard.model.js";
 import VipPackage from "../models/vipPackage.model.js";
-import { syncUsersToMeili } from "../utils/meiliSync.js";
 import PaymentOrder from "../models/paymentOrder.model.js";
 import FlashcardSet from "../models/flashcardSet.model.js";
 import ScoreMapping from "../models/scoreMapping.model.js";
@@ -14,17 +13,6 @@ import NotificationService from "../services/notification.service.js";
 import ListeningQuestion from "../models/fillBlankQuestion.model.js";
 
 const __dirname = path.resolve();
-
-// Sync mail
-export const syncMeiliUsersOnce = async () => {
-  try {
-    console.log("Syncing existing users to Meilisearch...");
-    await syncUsersToMeili();
-    console.log("Meilisearch sync complete!");
-  } catch (err) {
-    console.error("Error syncing Meilisearch:", err);
-  }
-};
 
 // Test VIP expiry notification
 export const testVIPExpiryNotification = async (notificationService) => {
