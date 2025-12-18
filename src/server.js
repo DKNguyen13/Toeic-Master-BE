@@ -79,7 +79,6 @@ await connectDB();
 // await InitData.seedLessons();
 // await InitData.seedFlashcards();
 // await InitData.seedLessons();
-// await InitData.syncMeiliUsersOnce();
 // await InitData.initListeningQuestions();
 // await InitData.resolveStaleOrders();
 

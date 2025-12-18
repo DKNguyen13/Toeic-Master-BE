@@ -60,8 +60,4 @@ export const config = {
     // Ollama
     ollamaApiKey: process.env.OLLAMA_API_KEY,
     ollama_model: process.env.OLLAMA_MODEL,
-
-    // Meilisearch
-    meili_master_key: process.env.MEILI_MASTER_KEY,
-    meili_host: process.env.MEILI_HOST || 'http://localhost:7700',
 };
