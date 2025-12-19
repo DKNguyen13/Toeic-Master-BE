@@ -3,7 +3,7 @@ dotenv.config();
 
 export const config = {
     mongodbUri: process.env.MONGODB_URI,
-    port: process.env.PORT || 10000,
+    port: process.env.PORT || 8080,
 
     // JWT
     accessTokenKey: process.env.ACCESS_TOKEN_KEY,
