@@ -40,7 +40,6 @@ const allowedOrigins = [
   config.backendUrl, // Backend
 ];
 
-app.use(cors(corsOptions));
 if (process.env.NODE_ENV !== 'production') {
   allowedOrigins.push("http://localhost:3000", "http://localhost:3001", "http://localhost:4000");
 }
@@ -111,5 +110,6 @@ cron.schedule('0 0 * * *', async () => {
         console.error('Error while sending VIP expiry notifications:', error);
     }
 });
+
 
 export default app;
