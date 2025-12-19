@@ -40,6 +40,7 @@ const allowedOrigins = [
   config.backendUrl, // Backend
 ];
 
+app.use(cors(corsOptions));
 if (process.env.NODE_ENV !== 'production') {
   allowedOrigins.push("http://localhost:3000", "http://localhost:3001", "http://localhost:4000");
 }
@@ -48,7 +49,7 @@ app.use(cors({
   origin: allowedOrigins,
   credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ limit: "20mb" }));
 app.use(cookieParser());
 
 app.use('/api/admin', adminRouter);
