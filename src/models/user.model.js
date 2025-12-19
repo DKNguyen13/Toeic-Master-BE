@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import { meiliClient } from '../config/meilisearch.config.js';
 
 const userSchema = new mongoose.Schema({
   email: { type: String, minlength: 10, maxlength: 40, required: true, unique: true },
@@ -33,55 +32,6 @@ const userSchema = new mongoose.Schema({
     bestScore: { type: Number, default: 0 },
   }
 }, { timestamps: true });
-
-userSchema.post("save", async function (doc) {
-  try {
-    if (!doc || doc.role === "admin") return;
-    const index = meiliClient.index("users");
-    await index.addDocuments([{
-      id: doc._id.toString(),
-      fullname: doc.fullname,
-      email: doc.email,
-      phone: doc.phone,
-      role: doc.role,
-      isActive: doc.isActive,
-      authType: doc.authType
-    }]);
-    console.log("[Meili] Added:", doc.fullname);
-  } catch (err) {
-    console.error("[Meili] Add error:", err.message);
-  }
-});
-
-userSchema.post("findOneAndUpdate", async function (doc) {
-  if (!doc || doc.role === "admin") return;
-  try {
-    const index = meiliClient.index("users");
-    await index.updateDocuments([{
-      id: doc._id.toString(),
-      fullname: doc.fullname,
-      email: doc.email,
-      phone: doc.phone,
-      role: doc.role,
-      isActive: doc.isActive,
-      authType: doc.authType
-    }]);
-    console.log("[Meili] Updated:", doc.fullname);
-  } catch (err) {
-    console.error("[Meili] Update error:", err.message);
-  }
-});
-
-userSchema.post("findOneAndDelete", async function (doc) {
-  if (!doc || doc.role === "admin") return;
-  try {
-    const index = meiliClient.index("users");
-    await index.deleteDocument(doc._id.toString());
-    console.log("[Meili] Deleted:", doc.fullname);
-  } catch (err) {
-    console.error("[Meili] Delete error:", err.message);
-  }
-});
 
 userSchema.methods.updateStatistics = async function (results) {
   try {

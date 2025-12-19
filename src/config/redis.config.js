@@ -1,29 +1,9 @@
-import { createClient } from "redis";
+import { Redis } from "@upstash/redis";
 import { config } from "./env.config.js";
 
-/*
-    Redis CLI
-    Get all key: KEYS *
-    Get otp send to email: GET otp:test@gmail.com
-*/
-
-let redisClient;
-async function connectRedis() {
-  try {
-    redisClient = createClient({ url: config.redisUrl });
-
-    redisClient.on('error', (err) => {
-      console.warn('Redis connection error:', err.message);
-    });
-
-    await redisClient.connect();
-    console.log('Redis connected');
-  } catch (err) {
-    console.warn('Redis not connected. Maybe server is not running on', config.redisUrl);
-    redisClient = null;
-  }
-}
-
-connectRedis();
+const redisClient = new Redis({
+  url: config.redisUrl,
+  token: config.redisToken,
+});
 
 export default redisClient;
