@@ -1,6 +1,9 @@
 # Node modules
 node_modules/
 
+# src/storage/lessons
+src/storage/lessons
+
 # Logs
 logs/
 *.log
@@ -29,9 +32,16 @@ jspm_packages/
 # Optional eslint cache
 .eslintcache
 
-# dotenv environment variables
+# Environment variables
 .env
-.env.*.local
+.env.local
+.env.development
+.env.test
+.env.production
+.env.staging
+
+# toxicwords files
+toxicWords.json
 
 # Build output
 dist/
