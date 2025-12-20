@@ -77,7 +77,7 @@ class NotificationService {
                 });
 
                 console.log(`Thông báo VIP sắp hết hạn đã được gửi tới người dùng ${user.fullname}`);
-                await redisClient.set(todayKey, "true", "EX", 86400);
+                await redisClient.set(todayKey, "true", { ex: 86400 });
             } else {
                 console.log(`Không gửi thông báo VIP cho người dùng ${user.fullname}.`);
             }

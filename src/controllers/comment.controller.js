@@ -28,7 +28,6 @@ export const getCommentsByExamId = async (req, res, next) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
-
         const comments = await Comment.find({ exam: req.params.examId, isParent: true })
             .populate("author", "fullname avatarUrl")
             .sort({ createdAt: -1 })
@@ -71,35 +70,44 @@ export const addComment = async (req, res, next) => {
 
 export const updateComment = async (req, res, next) => {
     try {
-        const newContent = req.body.content || req.body.comment;
+        const comment = await Comment.findById(req.params.id);
+        if (!comment) {
+            return res.status(404).json({ error: "Comment not found" });
+        }
+
+        let newContent = (req.body.content || req.body.comment).trim();
 
         const isToxic = checkToxic(newContent);
         if (isToxic) {
             return res.status(400).json({ message: "Nội dung chứa từ bậy bạ, không thể cập nhật" });
         }
 
-        const cmt = req.body;
-        cmt.isEdited = true;
-        cmt.editedAt = Date.now();
-        let comment = await Comment.findByIdAndUpdate(
-            req.params.id,
-            cmt,
-            { new: true }
-        )
-        if (!comment) {
-            return res.status(404).json({ error: "Comment not found" });
+        if (comment.replyTo) {
+            const prefix = `@${comment.replyTo} `;
+            if (!newContent.startsWith(prefix)) {
+                newContent = prefix + newContent;
+            }
         }
-        comment = await comment.populate("author", "fullname avatarUrl")
-        res.json(convertComment(comment, req.user.id));
+
+        const updated = await Comment.findByIdAndUpdate(
+            req.params.id,
+            {
+                content: newContent,
+                isEdited: true,
+                editedAt: Date.now()
+            },
+            { new: true }
+        ).populate("author", "fullname avatarUrl");
+
+        res.json(convertComment(updated, req.user.id));
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
-}
+};
 
 export const deleteComment = async (req, res, next) => {
     try {
         const comment = await Comment.findById(req.params.id);
-
         if (!comment) {
             return res.status(404).json({ error: "Không tìm thấy nội dung này" });
         }
@@ -114,11 +122,8 @@ export const replyComment = async (req, res, next) => {
     try {
         const userId = req.user.id;
         const user = await userModel.findById(userId);
-        console.log('User: ', user);
-        const parentCommentId = req.params.id;
-        const reply = req.body;
-        console.log("Replying to comment ID:", parentCommentId);
 
+        const parentCommentId = req.params.id;
         const replyText = req.body.content || req.body.comment;
 
         const isToxic = checkToxic(replyText);
@@ -126,22 +131,36 @@ export const replyComment = async (req, res, next) => {
             return res.status(400).json({ message: "Nội dung chứa từ bậy bạ! Vui lòng kiểm tra lại!" });
         }
 
-        const parentComment = await Comment.findById(parentCommentId).populate("exam", "title slug");
+        const parentComment = await Comment.findById(parentCommentId)
+            .populate("author", "fullname")
+            .populate("exam", "title slug");
+
         if (!parentComment) {
             return res.status(404).json({ error: "Parent comment not found" });
         }
-        reply.author = user._id;
-        reply.exam = parentComment.exam;
-        if (parentComment.isParent === false) {
-            reply.parent = parentComment.parent;
+
+        const replyToName = parentComment.author.fullname;
+        
+        const prefix = `@${replyToName}`;
+        if (replyText === prefix || replyText === `${prefix} `) {
+            return res.status(400).json({ message: "Vui lòng nhập nội dung bình luận" });
         }
-        else{
-            reply.parent = parentCommentId;
+        let finalContent = replyText.trim();
+        if (!finalContent.startsWith(`@${replyToName}`)) {
+            finalContent = `@${replyToName} ${finalContent}`;
         }
-        reply.isParent = false;
+
+        const reply = {
+            content: finalContent,
+            replyTo: replyToName,
+            author: user._id,
+            exam: parentComment.exam._id,
+            isParent: false,
+            parent: parentCommentId
+        };
+
         let savedReply = await Comment.create(reply);
         savedReply = await savedReply.populate("author", "fullname avatarUrl");
-
 
         if (parentComment.author._id.toString() !== user.id.toString()) {
             try {
@@ -165,17 +184,15 @@ export const replyComment = async (req, res, next) => {
                     console.log(`✓ Notification sent to user ${parentComment.author._id}`);
                 }
             } catch (notifError) {
-                // Log lỗi nhưng không fail request
                 console.error('Error sending notification:', notifError);
             }
         }
 
         res.json(convertComment(savedReply, user.id));
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ error: error.message });
     }
-}
+};
 
 export const getChildrenComment = async (req, res, next) => {
     try {
@@ -188,19 +205,15 @@ export const getChildrenComment = async (req, res, next) => {
         const page = parseInt(req.query.page) || 1;
         const limit = 5;
         const skip = (page - 1) * limit;
-
         const parentComment = await Comment.findById(parentCommentId);
         if (!parentComment) {
             return res.status(404).json({ error: "Parent comment not found" });
         }
-
         const replies = await Comment.find({ parent: parentCommentId })
             .populate("author", "fullname avatarUrl")
             .skip(skip)
             .limit(limit)
-
         const total = await Comment.countDocuments({ parent: parentCommentId });
-
         res.json({
             data: convertComments(replies, id),
             pagination: {
@@ -219,14 +232,12 @@ export const getChildrenComment = async (req, res, next) => {
 
 export const reactComment = async (req, res, next) => {
     try {
-        const user = req.user; // 'like' or 'unlike'
+        const user = req.user;
         const commentId = req.params.id;
-
         let comment = await Comment.findById(commentId);
         if (!comment) {
             return res.status(404).json({ error: "Không tìm thấy nội dung này" });
         }
-
         const existingReactionIndex = comment.likes.findIndex(like => {
             // console.log(like);
             return like.toString() === user.id
