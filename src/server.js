@@ -1,4 +1,5 @@
 import cors from 'cors';
+import http from 'http';
 import cron from 'node-cron';
 import express from 'express';
 import cookieParser from 'cookie-parser';
@@ -28,21 +29,26 @@ import NotificationService from "./services/notification.service.js";
 // socket
 import { Server } from "socket.io";
 import { initChatbotSocket } from './sockets/chatbot/chatbotSocket.js';
-import { analyzeResult } from './controllers/analysis.controller.js';
 import { initSaveAnswersSocket } from './sockets/saveAnswer/saveAnswerSocket.js';
 
 const app = express()
+const server = http.createServer(app);
 
-const corsOptions = {
-  origin: [
-    "http://localhost:3000", // user
-    "http://localhost:4000", // admin
-  ],
-  credentials: true,// bắt buộc để gửi cookie
-};
+const allowedOrigins = [
+  config.frontendUrl, // User
+  config.adminUrl, // Admin
+  config.backendUrl, // Backend
+];
 
-app.use(cors(corsOptions));
-app.use(express.json());
+if (process.env.NODE_ENV !== 'production') {
+  allowedOrigins.push("http://localhost:3000", "http://localhost:3001", "http://localhost:4000");
+}
+
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
+app.use(express.json({ limit: "20mb" }));
 app.use(cookieParser());
 
 app.use('/api/admin', adminRouter);
@@ -62,35 +68,38 @@ app.use('/api/notifications', notificationRouter);
 app.use('/api/analysis', analysis);
 app.use('/api/practice', fillBlankQuestionRouter);
 
+app.get('/', (req, res) => {
+  res.json({ message: 'TOEIC Master Backend + Socket.IO is running!' });
+});
+
 await connectDB();
 
-await InitData.createAdminIfNotExist();
-await InitData.seedPackages();
-await InitData.seedLessons();
-await InitData.seedFlashcards();
-await InitData.seedLessons();
-await InitData.syncMeiliUsersOnce();
-//await InitData.initListeningQuestions();
-await InitData.resolveStaleOrders();
+// await InitData.createAdminIfNotExist();
+// await InitData.seedPackages();
+// await InitData.seedLessons();
+// await InitData.seedFlashcards();
+// await InitData.seedLessons();
+// await InitData.initListeningQuestions();
+// await InitData.resolveStaleOrders();
 
-const io = new Server(8081, {
+const io = new Server(server, {
     cors: {
         origin: "*",          // Cho phép mọi nguồn truy cập (FE mở file local cũng được)
         methods: ["GET", "POST"]
     }
 });
 
-const onlineUsers = initChatbotSocket(io, { geminiApiKey: config.geminiApiKey });
+const onlineUsers = initChatbotSocket(io, { groqApiKey: config.groqApiKey });
 initSaveAnswersSocket(io);
 
 const notificationService = new NotificationService(io, onlineUsers);
 app.set('notificationService', notificationService);
 
-app.listen(config.port, () => {
+server.listen(config.port, () => {
   console.log(`Server running on port ${config.port}`)
 });
 
-await InitData.testVIPExpiryNotification(notificationService);
+//await InitData.testVIPExpiryNotification(notificationService);
 
 // Cron job kiểm tra ngày hết hạn VIP mỗi ngày vào 00:00 (trong ngày)
 cron.schedule('0 0 * * *', async () => {
@@ -101,5 +110,6 @@ cron.schedule('0 0 * * *', async () => {
         console.error('Error while sending VIP expiry notifications:', error);
     }
 });
+
 
 export default app;

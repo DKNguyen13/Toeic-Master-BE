@@ -11,6 +11,10 @@ const commentSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
+    replyTo: {
+        type: String,
+        default: null
+    },
     author: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

@@ -1,23 +1,47 @@
+import Fuse from "fuse.js";
+import userModel from "../models/user.model.js";
 import { success, error } from "../utils/response.js";
-import { meiliClient } from "../config/meilisearch.config.js";
 import * as AdminService from "../services/admin.service.js";
 
-// Search user
+// Search users (exclude admins)
 export const searchUsers = async (req, res) => {
-    try {
-        if (req.user.role !== 'admin') return error(res, 'Không có quyền truy cập', 403);
+  try {
+    if (req.user.role !== "admin")
+      return error(res, "Không có quyền truy cập", 403);
 
-        const query = req.query.q || "";
-        const index = meiliClient.index("users");
+    const q = req.query.q?.trim();
+    if (!q || q.length < 2) return success(res, "", { hits: [] });
 
-        const result = await index.search(query, { limit: 20});
-        const filteredHits = result.hits.filter(u => u.role !== "admin");
-        return success(res, "", {hits: result.hits});
-    } catch (err) {
-        console.error("Search error:", err);
-        return error(res, "Lỗi khi tìm kiếm");
-    }
-}
+    const regex = new RegExp(q.split("").join(".*"), "i");
+    const candidates = await userModel.find(
+      {
+        role: { $ne: "admin" },
+        $or: [
+          { fullname: { $regex: regex } },
+          { email: { $regex: regex } },
+          { phone: { $regex: regex } }
+        ]
+      },
+      "fullname email phone role isActive authType"
+    )
+    .limit(200)
+    .lean();
+
+    const fuse = new Fuse(candidates, {
+      keys: ["fullname", "email", "phone"],
+      includeScore: true,
+      threshold: 0.4, // 0.0 = chặt; 0.6 = lỏng
+    });
+
+    const results = fuse.search(q).slice(0, 20)
+      .map(i => i.item);
+
+    return success(res, "Tìm kiếm thành công", { hits: results });
+  } catch (err) {
+    console.error("Search user error:", err);
+    return error(res, "Lỗi khi tìm kiếm");
+  }
+};
 
 // Get all users (with pagination, exclude admins)
 export const getAllUsersController = async (req, res) => {

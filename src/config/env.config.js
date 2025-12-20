@@ -12,13 +12,16 @@ export const config = {
     refreshTokenLife: process.env.REFRESH_TOKEN_LIFE || '7d',
 
     // Redis
-    redisUrl: process.env.REDIS_URL || 'redis://127.0.0.1:6379',
+    redisUrl: process.env.REDIS_URL,
+    redisToken: process.env.REDIS_TOKEN,
 
     // Mail
     mailHost: process.env.MAIL_HOST,
     mailPort: process.env.MAIL_PORT,
     mailUser: process.env.MAIL_USER,
     mailPass: process.env.MAIL_PASS,
+    mailersendApiKey: process.env.MAILERSEND_API_KEY,
+    supportEmail: process.env.SUPPORT_EMAIL,
 
     // Google reCAPTCHA
     recaptchaSecret: process.env.RECAPTCHA_SECRET_KEY,
@@ -29,17 +32,19 @@ export const config = {
     googleServerCallback: process.env.GOOGLE_SERVER_CALLBACK,
 
     // Cookie options
-    cookieSecure: process.env.COOKIE_SECURE === 'false', // true => chỉ gửi qua https
-    cookieSameSite: process.env.COOKIE_SAMESITE || 'strict',
-    cookieHttpOnly: process.env.COOKIE_HTTPONLY !== 'false', // default: true
+    cookieSecure: process.env.COOKIE_SECURE, // true => chỉ gửi qua https
+    cookieSameSite: process.env.COOKIE_SAMESITE,
+    cookieHttpOnly: process.env.COOKIE_HTTPONLY, // default: true
 
     // Cloudinary
     cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME,
     cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
     cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
 
-    // Frontend url
-    frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
+    // Website URLs
+    frontendUrl: process.env.FRONTEND_URL,
+    adminUrl: process.env.ADMIN_URL,
+    backendUrl: process.env.BACKEND_URL,
 
     // VNPay
     paymentSuccessPath: process.env.PAYMENT_SUCCESS_PATH || "/payment/success",
@@ -47,7 +52,7 @@ export const config = {
     vnp_TmnCode: process.env.VNP_TMNCODE,
     vnp_HashSecret: process.env.VNP_HASHSECRET,
     vnp_Url: process.env.VNP_URL || "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
-    vnp_ReturnUrl: process.env.VNP_RETURNURL || "http://localhost:3000/api/payment/return",
+    vnp_ReturnUrl: process.env.VNP_RETURNURL,
     
     // GroqCloud AI
     groqApiKey: process.env.GROQ_API_KEY,
@@ -55,8 +60,4 @@ export const config = {
     // Ollama
     ollamaApiKey: process.env.OLLAMA_API_KEY,
     ollama_model: process.env.OLLAMA_MODEL,
-
-    // Meilisearch
-    meili_master_key: process.env.MEILI_MASTER_KEY,
-    meili_host: process.env.MEILI_HOST,
 };

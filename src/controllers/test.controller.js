@@ -3,6 +3,7 @@ import Part from "../models/part.model.js";
 import Question from "../models/question.model.js";
 import { success, error } from '../utils/response.js';
 import { uploadToCloudinary } from "../services/cloudinary.service.js";
+import * as testService from '../services/test.service.js';
 
 // [GET] /api/test
 export const getAllTest = async (req, res) => {
@@ -107,6 +108,23 @@ export const getTestDetail = async (req, res) => {
     }
 };
 
+// [GET] /api/test/:slug/edit
+export const getTestInfo = async (req, res) => {
+    try {
+        const { slug } = req.params;
+        const test = await Test.findOne({ slug });
+        if (!test) {
+            return error(res, 'Đề thi không tồn tại');
+        }
+        // Call service
+        const result = await testService.getTestDetailForEdit(test._id);
+
+        return success(res, 'Lấy thông tin đề thi thành công', result);
+    } catch (err) {
+        return error(res, 'Lấy thông tin đề thi thất bại', 500, err.message);
+    }
+};
+
 // [POST] /api/test/create
 export const createTest = async (req, res) => {
     try {
@@ -168,21 +186,13 @@ export const updateTest = async (req, res) => {
     try {
         // validate input
         const { slug } = req.params;
-        const updateData = { ...req.body };
+        const updateData = req.body;
 
-        const test = await Test.findOneAndUpdate(
-            { slug },
-            updateData,
-            { new: true, runValidators: true },
-        ).populate('createdBy', 'fullname email');
+        const result = await testService.updateTestComplete(slug, updateData);
 
-        if (!test) {
-            return error(res, 'Test not found');
-        }
-
-        return success(res, 'Update test success', { test })
-    } catch (error) {
-        return error(res, 'Update test error');
+        return success(res, 'Cập nhật thông tin đề thi thành công', { result });
+    } catch (err) {
+        return error(res, 'Cập nhật thông tin đề thi thất bại', 500, err.message);
     }
 };
 
