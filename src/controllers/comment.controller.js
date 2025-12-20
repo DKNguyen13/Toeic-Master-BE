@@ -156,7 +156,7 @@ export const replyComment = async (req, res, next) => {
             author: user._id,
             exam: parentComment.exam._id,
             isParent: false,
-            parent: parentComment.isParent ? parentCommentId : parentComment.parent
+            parent: parentCommentId
         };
 
         let savedReply = await Comment.create(reply);
