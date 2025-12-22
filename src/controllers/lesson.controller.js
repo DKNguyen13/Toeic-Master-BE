@@ -1,22 +1,33 @@
 import fs from "fs";
 import path from "path";
+import axios from "axios";
 import mammoth from "mammoth";
 import { fileURLToPath } from "url";
 import Lesson from "../models/lesson.model.js";
 import userModel from "../models/user.model.js";
 import Wishlist from '../models/wishlist.model.js';
 import { success, error } from '../utils/response.js';
+import { uploadLessonHtml } from "../services/cloudinary.service.js";
 
-const getLessonContent = (lesson) => {
-  if (lesson.path) {
-    const filePath = path.join(process.cwd(), lesson.path);
-    if (fs.existsSync(filePath)) {
-      return fs.readFileSync(filePath, "utf-8");
-    } else {
-      return "<h1>Nội dung đang được cập nhật! Vui lòng quay lại sau.</h1>";
+const getLessonContent = async (lesson) => {
+  if (!lesson.path) {
+    return "<h1>Nội dung hiện tại bị lỗi. Vui lòng báo cáo cho chúng tôi về sự cố này!</h1>";
+  }
+
+  if (/^https?:\/\//i.test(lesson.path)) {
+    try {
+      const res = await axios.get(lesson.path);
+      return res.data;
+    } catch (err) {
+      return "<h1>Nội dung hiện tại bị lỗi. Vui lòng báo cáo cho chúng tôi về sự cố này!</h1>";
     }
   }
-  return "<h1>Chưa có dữ liệu</h1>";
+
+  const filePath = path.join(process.cwd(), lesson.path);
+  if (fs.existsSync(filePath)) {
+    return fs.readFileSync(filePath, "utf-8");
+  }
+  return "<h1>Nội dung đang được cập nhật</h1>";
 };
 
 // Get all lesson free list text
@@ -119,7 +130,7 @@ export const getLessonFreeById = async (req, res) => {
       isFavorite = !!exists;
     }
 
-    const content = getLessonContent(lesson);
+    const content = await getLessonContent(lesson);
 
     return success(res, 'Lấy lesson thành công', {
       ...lesson.toObject(),
@@ -159,7 +170,7 @@ export const getLessonById = async (req, res) => {
       isFavorite = !!exists;
     }
 
-    const content = getLessonContent(lesson);
+    const content = await getLessonContent(lesson);
 
     return success(res, 'Lấy lesson thành công', {
       ...lesson.toObject(),
@@ -235,40 +246,27 @@ export const uploadLesson = async (req, res) => {
     if (req.user.role !== "admin") return error(res, "Không có quyền truy cập", 403);
 
     const { title, type, accessLevel } = req.body;
-    const uploadedFile = req.file;
-    if (!uploadedFile) return error(res, "Vui lòng tải lên file Word (.docx)", 400);
+    if (!req.file) return error(res, "Vui lòng tải lên file Word (.docx)", 400);
 
-    // Chuyển file Word sang HTML
-    const result = await mammoth.convertToHtml({ path: uploadedFile.path });
+    const result = await mammoth.convertToHtml({ path: req.file.path });
     const html = result.value || "<p>Không có nội dung</p>";
 
-    // Tạo file HTML trong /storage/lessons
-    const safeTitle = title.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-");
-    const fileName = `${Date.now()}-${safeTitle}.html`;
+    const htmlBuffer = Buffer.from(html, "utf-8");
+    const lessonUrl = await uploadLessonHtml(htmlBuffer);
 
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-    const outputDir = path.resolve(__dirname, "../storage/lessons");
-
-    const outputPath = path.join(outputDir, fileName);
-
-    if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
-    fs.writeFileSync(outputPath, html, "utf-8");
-
-    // Tạo record trong MongoDB
     const lesson = await Lesson.create({
       title,
       type,
       accessLevel,
-      path: `/src/storage/lessons/${fileName}`,
+      path: lessonUrl,
       createdBy: req.user._id,
     });
 
-    fs.unlinkSync(uploadedFile.path);
+    fs.unlinkSync(req.file.path);
 
     return success(res, "Upload lesson thành công", lesson);
   } catch (err) {
-    console.error("Lỗi upload lesson:", err);
+    console.error(err);
     return error(res, "Upload lesson thất bại", 500);
   }
 };
@@ -280,59 +278,42 @@ export const reuploadLesson = async (req, res) => {
 
     const lesson = await Lesson.findById(req.params.id);
     if (!lesson) return error(res, "Lesson không tồn tại", 404);
+    if (!req.file) return error(res, "Vui lòng tải lên file Word (.docx)", 400);
 
-    const uploadedFile = req.file;
-    if (!uploadedFile) return error(res, "Vui lòng tải lên file Word (.docx)", 400);
-
-    // Xóa file HTML cũ nếu có
-    if (lesson.path) {
-      const oldPath = path.join(process.cwd(), lesson.path);
-      if (fs.existsSync(oldPath)){
-        fs.unlinkSync(oldPath);
-      }
-      else{
-        console.warn("File cũ không tồn tại:", oldPath);
-      }
-    }
-    else{
-      console.warn("Lesson không có path cũ:", lesson._id);
-    }
-
-    // Chuyển file Word sang HTML mới
-    const result = await mammoth.convertToHtml({ path: uploadedFile.path });
+    const result = await mammoth.convertToHtml({ path: req.file.path });
     const html = result.value || "<p>Không có nội dung</p>";
 
-    // Tạo file HTML mới
-    const safeTitle = lesson.title.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-");
-    const fileName = `${Date.now()}-${safeTitle}.html`;
+    const htmlBuffer = Buffer.from(html, "utf-8");
+    const newLessonUrl = await uploadLessonHtml(htmlBuffer);
 
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-    const outputDir = path.resolve(__dirname, "../storage/lessons");
-    const outputPath = path.join(outputDir, fileName);
+    if (lesson.path && !lesson.path.startsWith("http")) {
+      const oldPath = path.join(process.cwd(), lesson.path);
+      if (fs.existsSync(oldPath)) {
+        fs.unlinkSync(oldPath);
+      }
+    }
 
-    if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
-    fs.writeFileSync(outputPath, html, "utf-8");
-
-    // Cập nhật lại path trong MongoDB
-    lesson.path = `/src/storage/lessons/${fileName}`;
+    lesson.path = newLessonUrl;
     await lesson.save();
 
-    // Xóa file Word tạm sau khi convert
-    fs.unlinkSync(uploadedFile.path);
+    fs.unlinkSync(req.file.path);
 
     const favoriteCount = await Wishlist.countDocuments({ lesson: lesson._id });
     let isFavorite = false;
+
     if (req.user) {
-      const exists = await Wishlist.exists({ user: req.user._id, lesson: lesson._id });
+      const exists = await Wishlist.exists({
+        user: req.user._id,
+        lesson: lesson._id,
+      });
       isFavorite = !!exists;
     }
-    else {
-      console.warn("Người dùng chưa đăng nhập, không thể kiểm tra yêu thích.");
-      isFavorite = false;
-    }
 
-    return success(res, "Cập nhật nội dung bài học thành công", { ...lesson.toObject(), favoriteCount, isFavorite });
+    return success(res, "Cập nhật nội dung bài học thành công", {
+      ...lesson.toObject(),
+      favoriteCount,
+      isFavorite,
+    });
   } catch (err) {
     console.error("Lỗi reupload lesson:", err);
     return error(res, "Upload lại nội dung thất bại", 500);
