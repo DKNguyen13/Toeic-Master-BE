@@ -33,3 +33,21 @@ export const uploadToCloudinary = async (fileBuffer, folder = "uploads") => {
     streamifier.createReadStream(fileBuffer).pipe(stream);
   });
 };
+
+export const uploadLessonHtml = async (htmlBuffer) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.v2.uploader.upload_stream(
+      {
+        folder: "lessons",
+        resource_type: "raw",
+        format: "html",
+      },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result.secure_url);
+      }
+    );
+
+    streamifier.createReadStream(htmlBuffer).pipe(stream);
+  });
+};
