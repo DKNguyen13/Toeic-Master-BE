@@ -85,16 +85,21 @@ Dự án được xây dựng phục vụ mục đích học tập và báo cáo
 - Hỗ trợ và liên hệ người dùng
 
 ### 🛠️ Quản lý hệ thống (Admin)
+- Thống kê và quản lý doanh thu
 - Quản lý người dùng
 - Quản lý bài học
 - Tạo và xóa đề thi TOEIC
-- Thống kê và quản lý doanh thu
+- Cập nhật thông tin các gói nâng cấp tài khoản
 
 ### 🔐 Xác thực & hệ thống
 - Xác thực và phân quyền người dùng (User / Admin)
 - Upload file và hình ảnh
 - Gửi email xác thực và thông báo
 
+### 🛎️ Hệ thống thông báo
+- Gửi thông báo khi có tương tác của người dùng khi bình luận
+- Thông báo realtime thông qua Socket.IO
+- Tự động nhắc trước 1 ngày khi gói nâng cấp của người dùng sắp hết hạn
 ---
 
 ## 🔐 Biến môi trường (.env)
