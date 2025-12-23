@@ -102,7 +102,7 @@ Dự án được xây dựng phục vụ mục đích học tập và báo cáo
 - Gửi email xác thực và thông báo
 
 ### 🛎️ Hệ thống thông báo
-- Gửi thông báo khi có tương tác của người dùng khi bình luận
+- Gửi thông báo cho người dùng khi có tương tác bình luận
 - Thông báo realtime thông qua Socket.IO
 - Tự động nhắc trước 1 ngày khi gói nâng cấp của người dùng sắp hết hạn
 ---
@@ -160,9 +160,9 @@ PAYMENT_SUCCESS_PATH=
 PAYMENT_FAIL_PATH=
 
 # Frontend URLs
-FRONTEND_URL=
-ADMIN_URL=
-BACKEND_URL=
+FRONTEND_URL=http://localhost:3000
+ADMIN_URL=http://localhost:4000
+BACKEND_URL=http://localhost:8080
 
 # AI Services
 GROQ_API_KEY=
@@ -173,12 +173,21 @@ OLLAMA_MODEL=
 
 ## 🚀 Cách chạy Backend (Local)
 
-### 1️⃣ Cài đặt dependencies
+### 1️⃣ Clone project
+```bash
+git clone https://github.com/DKNguyen13/Toeic-Master-BE.git
+cd Toeic-Master-BE
+```
+
+### 2️⃣ Cài đặt dependencies
+```bash
 npm install
+```
 
-### 2️⃣ Tạo file `.env`
-Tạo file `.env` trong thư mục gốc và cấu hình các biến môi trường theo mẫu bên dưới.
+### 3️⃣ Tạo file .env 
+Tạo file .env trong thư mục gốc và cấu hình các biến môi trường theo mẫu bên dưới.
 
-### 3️⃣ Chạy server
+### 4️⃣ Chạy server
+```bash
 npm run dev
-
+```
