@@ -94,3 +94,81 @@ Dự án được xây dựng phục vụ mục đích học tập và báo cáo
 - Xác thực và phân quyền người dùng (User / Admin)
 - Upload file và hình ảnh
 - Gửi email xác thực và thông báo
+
+---
+
+## 🔐 Biến môi trường (.env)
+
+Tạo file `.env` trong thư mục gốc và cấu hình các biến môi trường sau:
+```env
+PORT=8080
+
+# Database
+MONGODB_URI=
+
+# JWT
+ACCESS_TOKEN_KEY=
+ACCESS_TOKEN_LIFE=1d
+REFRESH_TOKEN_KEY=
+REFRESH_TOKEN_LIFE=7d
+
+# Cloudinary
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+
+# Redis
+REDIS_URL=
+REDIS_TOKEN=
+
+# Mail
+MAIL_HOST=
+MAIL_PORT=
+MAIL_USER=
+MAIL_PASS=
+SUPPORT_EMAIL=
+MAILERSEND_API_KEY=
+
+# Google reCAPTCHA
+RECAPTCHA_SECRET_KEY=
+
+# Google OAuth
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_SERVER_CALLBACK=
+
+# Cookie
+COOKIE_SECURE=false
+COOKIE_SAME_SITE=strict
+
+# Payment (Sandbox)
+VNP_TMNCODE=
+VNP_HASHSECRET=
+VNP_URL=
+VNP_RETURNURL=
+PAYMENT_SUCCESS_PATH=
+PAYMENT_FAIL_PATH=
+
+# Frontend URLs
+FRONTEND_URL=
+ADMIN_URL=
+BACKEND_URL=
+
+# AI Services
+GROQ_API_KEY=
+OLLAMA_API_KEY=
+OLLAMA_MODEL=
+```
+---
+
+## 🚀 Cách chạy Backend (Local)
+
+### 1️⃣ Cài đặt dependencies
+npm install
+
+### 2️⃣ Tạo file `.env`
+Tạo file `.env` trong thư mục gốc và cấu hình các biến môi trường theo mẫu bên dưới.
+
+### 3️⃣ Chạy server
+npm run dev
+
