@@ -57,8 +57,8 @@ Dự án được xây dựng phục vụ mục đích học tập và báo cáo
 ### 👤 Quản lý tài khoản người dùng
 - Đăng ký, đăng nhập, đăng xuất
 - Quên mật khẩu, đổi mật khẩu
-- Xem và cập nhật thông tin cá nhân
-- Kích hoạt / vô hiệu hóa tài khoản
+- Xem thông tin cá nhân
+- Cập nhật thông tin cá nhân
 
 ### 💳 Quản lý gói nâng cấp tài khoản
 - Xem danh sách các gói nâng cấp
@@ -70,6 +70,10 @@ Dự án được xây dựng phục vụ mục đích học tập và báo cáo
 - Xem chi tiết nội dung bài học
 - Luyện nghe và điền từ còn thiếu
 - Hệ thống flashcard hỗ trợ ghi nhớ từ vựng
+
+### 📝 Ghi chú & từ điển hỗ trợ học tập
+- Cho phép người học tạo ghi chú trong quá trình học
+- Tích hợp Laban Dictionary để hỗ trợ tra cứu từ vựng cho người học
 
 ### 📝 Luyện thi TOEIC trực tuyến
 - Làm bài thi TOEIC online
@@ -86,8 +90,9 @@ Dự án được xây dựng phục vụ mục đích học tập và báo cáo
 
 ### 🛠️ Quản lý hệ thống (Admin)
 - Thống kê và quản lý doanh thu
-- Quản lý người dùng
-- Quản lý bài học
+- Kích hoạt / vô hiệu hóa tài khoản
+- Xem danh sách người dùng
+- Tạo, chỉnh sửa và xóa bài học
 - Tạo và xóa đề thi TOEIC
 - Cập nhật thông tin các gói nâng cấp tài khoản
 
