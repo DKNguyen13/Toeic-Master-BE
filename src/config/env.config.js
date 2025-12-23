@@ -22,6 +22,8 @@ export const config = {
     mailPass: process.env.MAIL_PASS,
     mailersendApiKey: process.env.MAILERSEND_API_KEY,
     supportEmail: process.env.SUPPORT_EMAIL,
+    mailersendFromEmail: process.env.MAILERSEND_FROM_EMAIL,
+    mailersendFromName: process.env.MAILERSEND_FROM_NAME || "Toeic Master",
 
     // Google reCAPTCHA
     recaptchaSecret: process.env.RECAPTCHA_SECRET_KEY,

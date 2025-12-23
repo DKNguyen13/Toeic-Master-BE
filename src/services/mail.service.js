@@ -5,7 +5,7 @@ const mailersend = new MailerSend({
   apiKey: config.mailersendApiKey,
 });
 
-const fromSender = new Sender("toeicmaster@test-y7zpl98359o45vx6.mlsender.net", "Toeic Master");
+const fromSender = new Sender(`${config.mailersendFromEmail}`, `${config.mailersendFromName}`);
 
 // Send OTP email
 export const sendOTPEmail = async (to, otp) => {
