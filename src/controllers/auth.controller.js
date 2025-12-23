@@ -4,6 +4,7 @@ import { config } from "../config/env.config.js";
 import redisClient from "../config/redis.config.js";
 import { success, error } from '../utils/response.js';
 import * as AuthService from '../services/auth.service.js';
+import Notification from "../models/notification.model.js";
 import { authenticate } from '../middleware/authenticate.js';
 import { verifyRefreshToken, generateAccessToken } from '../utils/jwt.js';
 
@@ -116,11 +117,36 @@ export const sendRegiOTP = async (req, res) => {
 export const sendSupportEmail = async (req, res) => {
     try {
         const userId = req.user.id;
-        const user = await userModel.findById(userId).select("email");
+        const user = await userModel
+            .findById(userId)
+            .select("fullname email avatarUrl");
         if (!user) return error(res, "Người dùng không tồn tại", 404);
 
         const { name, title, content } = req.body;
         const result = await AuthService.sendSupportEmailService(user.email, name, title, content);
+        const admins = await userModel.find({ role: "admin" }).select("_id name avatar");
+        if (admins.length > 0) {
+            await Notification.insertMany(
+                admins.map(admin => ({
+                    recipientId: admin._id,
+                    senderId: user._id,
+                    type: "system",
+                    title: user.fullname ? `Hỗ trợ từ ${user.fullname}` : "Người dùng",
+                    message: `${title}: ${content}`,
+                    data: { senderName: user.name, avatarUrl: user.avatar },
+                    priority: "high"
+                }))
+            );
+        }
+
+        await Notification.createNotification({
+            recipientId: user._id,
+            type: "system",
+            title: "Bạn đã gửi yêu cầu hỗ trợ",
+            message: `Chúng tôi đã nhận yêu cầu: "${title}"`,
+            data: { senderName: "Hệ thống" },
+            priority: "normal"
+        });
         return success(res, result.message);
     } catch (err) {
         console.log("Send support email fail:", err.message);
