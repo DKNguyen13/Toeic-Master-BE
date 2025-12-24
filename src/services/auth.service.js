@@ -76,6 +76,7 @@ export const googleLoginService = async ({ tokenId }) => {
     
     if (user) {
         if (user.authType === 'normal') throw new Error('Email đã được đăng ký. Vui lòng đăng nhập bằng mật khẩu.');
+        if (!user.isActive) throw new Error('Tài khoản bị vô hiệu hóa!');
     } else {
         user = new User({ 
             fullname: name, 
@@ -102,7 +103,7 @@ export const googleLoginService = async ({ tokenId }) => {
         role: user.role 
     };
     
-    await redisClient.set(`refreshToken:${user.id}`, refreshToken, { ex: 7*24*60*60 });
+    await redisClient.set(`refreshToken:${user._id}`, refreshToken, { ex: 7*24*60*60 });
     return { user: safeUser, accessToken, refreshToken };
 };
 
