@@ -5,8 +5,8 @@ import { config } from '../config/env.config.js';
 import { OAuth2Client } from "google-auth-library";
 import redisClient from '../config/redis.config.js';
 import { uploadAvatar } from './cloudinary.service.js';
-import { sendOTPEmail, sendResetPasswordEmail, sendSupportEmail } from './mail.service.js';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt.js';
+import { sendOTPEmail, sendResetPasswordEmail, sendSupportEmail } from './mail.service.js';
 
 const client = new OAuth2Client(config.googleClientId);
 

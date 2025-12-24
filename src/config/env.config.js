@@ -11,6 +11,10 @@ export const config = {
     refreshTokenKey: process.env.REFRESH_TOKEN_KEY,
     refreshTokenLife: process.env.REFRESH_TOKEN_LIFE || '7d',
 
+    // Admin key
+    resetTokenKey: process.env.RESET_TOKEN_KEY,
+    resetTokenLife: process.env.RESET_TOKEN_LIFE,
+
     // Redis
     redisUrl: process.env.REDIS_URL,
     redisToken: process.env.REDIS_TOKEN,
@@ -22,6 +26,7 @@ export const config = {
     mailPass: process.env.MAIL_PASS,
     mailersendApiKey: process.env.MAILERSEND_API_KEY,
     supportEmail: process.env.SUPPORT_EMAIL,
+    adminEmail: process.env.ADMIN_EMAIL,
     mailersendFromEmail: process.env.MAILERSEND_FROM_EMAIL,
     mailersendFromName: process.env.MAILERSEND_FROM_NAME || "Toeic Master",
 
