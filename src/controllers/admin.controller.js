@@ -1,7 +1,13 @@
 import Fuse from "fuse.js";
+import axios from 'axios';
+import bcrypt from 'bcryptjs';
+import redisClient from '../config/redis.config.js';
+import { config } from '../config/env.config.js';
 import userModel from "../models/user.model.js";
 import { success, error } from "../utils/response.js";
 import * as AdminService from "../services/admin.service.js";
+import { generateResetToken, verifyResetToken } from '../utils/jwt.js';
+import { sendResetPasswordLinkEmail } from '../services/mail.service.js';
 
 // Search users (exclude admins)
 export const searchUsers = async (req, res) => {
@@ -95,5 +101,90 @@ export const getAdminDashboard = async (req, res) => {
   } catch (error) {
     console.error('Lỗi Dashboard:', error);
     return error(res, 'Hệ thống lỗi khi lấy dữ liệu dashboard', 500);
+  }
+};
+
+// ForgotPassword Admin
+export const adminForgotPassword = async (req, res) => {
+  try {
+    const { token } = req.body;
+    const captcha = await axios.post(
+      "https://www.google.com/recaptcha/api/siteverify",
+      null,
+      {
+        params: {
+          secret: config.recaptchaSecret,
+          response: token,
+        },
+      }
+    );
+
+    if (!captcha.data.success) {
+      return error(res, "CAPTCHA không hợp lệ", 400);
+    }
+
+    const cooldownKey = 'admin_reset_cooldown';
+    const inCooldown = await redisClient.get(cooldownKey);
+    if (inCooldown) {
+      return success(
+        res,
+        "Email khôi phục đã được gửi thành công.",
+        { cooldown: 60 }
+      );
+    }
+
+    const admin = await userModel.findOne({
+      role: "admin",
+      authType: "normal",
+      isActive: true,
+    });
+
+    if (!admin) {
+      return success(res, "Email khôi phục đã được gửi thành công.");
+    }
+
+    const resetToken = generateResetToken(admin._id);
+
+    await redisClient.set(
+      `admin_reset:${resetToken}`,
+      admin._id.toString(),
+      { ex: 15 * 60 }
+    );
+
+    await redisClient.set(cooldownKey, '1', { ex: 60 });
+
+    await sendResetPasswordLinkEmail(admin.email, resetToken);
+
+    return success(
+      res,
+      "Nếu tài khoản admin tồn tại, email khôi phục đã được gửi.",
+      { cooldown: 60 }
+    );
+  } catch (err) {
+    console.error("Admin forgot password error:", err);
+    return error(res, "Không thể xử lý yêu cầu", 400);
+  }
+};
+
+const hashPassword = (password) => bcrypt.hashSync(password, 10);
+
+export const adminResetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) return error(res, "Thiếu dữ liệu", 400);
+    if (newPassword.length < 6) return error(res, "Mật khẩu phải ít nhất 6 ký tự", 400);
+
+    verifyResetToken(token);
+
+    const adminId = await redisClient.get(`admin_reset:${token}`);
+    if (!adminId) return error(res, "Link không hợp lệ hoặc đã hết hạn", 400);
+
+    await userModel.findByIdAndUpdate(adminId, {password: hashPassword(newPassword)});
+    await redisClient.del(`admin_reset:${token}`);
+
+    return success(res, "Đặt lại mật khẩu thành công");
+  } catch (err) {
+    console.error("Reset password error:", err);
+    return error(res, "Link không hợp lệ hoặc đã hết hạn", 400);
   }
 };
