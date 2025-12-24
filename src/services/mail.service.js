@@ -189,7 +189,7 @@ export const sendSupportEmail = async (fromUserEmail, userName, issueTitle, issu
   </html>
   `;
 
-  const recipients = [new Recipient(`${config.supportEmail}`)];
+  const recipients = [new Recipient(`${config.adminEmail}`)];
 
   const emailParams = new EmailParams()
     .setFrom(fromSender)
