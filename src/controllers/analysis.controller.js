@@ -1,208 +1,181 @@
 import axios from "axios";
 import { config } from "../config/env.config.js";
 
-// Bảng dữ liệu chuẩn từ ETS
-const TOEIC_CONVERSION_TABLE = `
-Số câu đúng | Listening Scaled | Reading Scaled
-0 | 0 | 0
-1 | 15 | 5
-2 | 20 | 5
-3 | 25 | 10
-4 | 30 | 15
-5 | 35 | 20
-6 | 40 | 25
-7 | 45 | 30
-8 | 50 | 35
-9 | 55 | 40
-10 | 60 | 45
-11 | 65 | 50
-12 | 70 | 55
-13 | 75 | 60
-14 | 80 | 65
-15 | 85 | 70
-16 | 90 | 75
-17 | 95 | 80
-18 | 100 | 85
-19 | 105 | 90
-20 | 110 | 95
-21 | 115 | 100
-22 | 120 | 105
-23 | 125 | 110
-24 | 130 | 115
-25 | 135 | 120
-26 | 140 | 125
-27 | 145 | 130
-28 | 150 | 135
-29 | 155 | 140
-30 | 160 | 145
-31 | 165 | 150
-32 | 170 | 155
-33 | 175 | 160
-34 | 180 | 165
-35 | 185 | 170
-36 | 190 | 175
-37 | 195 | 180
-38 | 200 | 185
-39 | 205 | 190
-40 | 210 | 195
-41 | 215 | 200
-42 | 220 | 205
-43 | 225 | 210
-44 | 230 | 215
-45 | 235 | 220
-46 | 240 | 225
-47 | 245 | 230
-48 | 250 | 235
-49 | 255 | 240
-50 | 260 | 245
-51 | 265 | 250
-52 | 270 | 255
-53 | 275 | 260
-54 | 280 | 265
-55 | 285 | 270
-56 | 290 | 275
-57 | 295 | 280
-58 | 300 | 285
-59 | 305 | 290
-60 | 310 | 295
-61 | 315 | 300
-62 | 320 | 305
-63 | 325 | 310
-64 | 330 | 315
-65 | 335 | 320
-66 | 340 | 325
-67 | 345 | 330
-68 | 350 | 335
-69 | 355 | 340
-70 | 360 | 345
-71 | 365 | 350
-72 | 370 | 355
-73 | 375 | 360
-74 | 380 | 365
-75 | 385 | 370
-76 | 395 | 375
-77 | 400 | 380
-78 | 405 | 385
-79 | 410 | 390
-80 | 415 | 395
-81 | 420 | 400
-82 | 425 | 405
-83 | 430 | 410
-84 | 435 | 415
-85 | 440 | 420
-86 | 445 | 425
-87 | 450 | 430
-88 | 455 | 435
-89 | 460 | 440
-90 | 465 | 445
-91 | 470 | 450
-92 | 475 | 455
-93 | 480 | 460
-94 | 485 | 465
-95 | 490 | 470
-96 | 495 | 475
-97 | 495 | 480
-98 | 495 | 485
-99 | 495 | 490
-100 | 495 | 495
+// Official ETS CEFR mapping
+const ETS_CEFR_MAPPING = {
+  listening: {
+    C1: 490,
+    B2: 400,
+    B1: 275,
+    A2: 110,
+    A1: 60
+  },
+  reading: {
+    C1: 455,
+    B2: 385,
+    B1: 275,
+    A2: 115,
+    A1: 60
+  }
+};
+
+const OFFICIAL_CEFR_GUIDELINES = `
+Theo bảng mapping ETS TOEIC-CEFR chính thức (minimum scores cho mỗi level):
+LISTENING (5-495):
++ C1: từ 490 điểm
++ B2: từ 400 điểm
++ B1: từ 275 điểm
++ A2: từ 110 điểm
++ A1: từ 60 điểm
+READING (5-495):
++ C1: từ 455 điểm
++ B2: từ 385 điểm
++ B1: từ 275 điểm
++ A2: từ 115 điểm
++ A1: từ 60 điểm
+Can-do descriptors theo section score (dựa ETS Score Descriptors):
+Listening 400+: Hiểu rõ đa số chi tiết hội thoại công việc, infer được ý định và mục đích người nói.
+Listening 275-399: Hiểu ý chính trong tình huống quen thuộc, nắm được context cơ bản.
+Listening dưới 275: Nhận diện được thông tin đơn giản, cần luyện thêm ngữ cảnh phức tạp.
+Reading 385+: Hiểu sâu văn bản nghiệp vụ, xử lý thông tin phức tạp, infer ý định tác giả.
+Reading 275-384: Đọc hiểu tài liệu công việc cơ bản, nắm ý chính trong văn bản rõ ràng.
+Reading dưới 275: Hiểu câu và đoạn đơn giản, cần nâng cao vocabulary và grammar.
 `;
 
+// Calculate CEFR level for a section
+const calculateSectionCEFR = (score, section) => {
+  const mapping = ETS_CEFR_MAPPING[section];
+  if (!mapping || score === undefined || score === null) return "N/A";
 
-// Mapping TOEIC scores to CEFR levels
-const CEFR_MAPPING = `
-CEFR | Listening Min | Reading Min | Total Approx | Descriptors
-A1 | 60 | 60 | 120-224 | Basic: Understand simple sentences in work contexts.
-A2 | 110 | 115 | 225-549 | Elementary: Handle basic workplace interactions.
-B1 | 275 | 275 | 550-784 | Intermediate: Manage most situations in English-speaking environments.
-B2 | 400 | 385 | 785-944 | Upper-Intermediate: Effective in professional settings.
-C1 | 490 | 455 | 945-990 | Advanced: Near-native fluency in complex topics.
-`;
+  if (score >= mapping.C1) return "C1";
+  if (score >= mapping.B2) return "B2";
+  if (score >= mapping.B1) return "B1";
+  if (score >= mapping.A2) return "A2";
+  if (score >= mapping.A1) return "A1";
+  return "Pre-A1";
+};
 
-// Common weaknesses
-const COMMON_ADVICE = `
-Nếu Listening < 275: Weak in audio comprehension - Practice short talks, conversations.
-Nếu Reading < 275: Weak in grammar/vocab - Focus on incomplete sentences, text completion.
-Gợi ý chung: Luyện daily 30min, use ETS sample tests.
-`;
+// Calculate overall CEFR (lower of the two sections)
+const calculateOverallCEFR = (listeningScore, readingScore) => {
+  const listeningCEFR = calculateSectionCEFR(listeningScore, 'listening');
+  const readingCEFR = calculateSectionCEFR(readingScore, 'reading');
+
+  const levels = ["Pre-A1", "A1", "A2", "B1", "B2", "C1"];
+  const listeningIndex = levels.indexOf(listeningCEFR);
+  const readingIndex = levels.indexOf(readingCEFR);
+
+  return levels[Math.min(listeningIndex, readingIndex)];
+};
 
 export const analyzeResult = async (req, res) => {
-  const {
-    summary,
-    isFullTest,
-    answers
-  } = req.body;
+  const { summary, isFullTest, answers } = req.body;
 
-  if (!summary) {
-    return res.status(400).json({ message: "Thiếu summary" });
-  }
-
+  // Validation
+  if (!summary) return res.status(400).json({ message: "Thiếu summary" });
   if (!Array.isArray(answers) || answers.length === 0) {
     return res.status(400).json({ message: "Danh sách answers không hợp lệ" });
   }
 
-  const partStats = {};
+  // Tính tổng số câu đúng từ answers (an toàn)
+  const totalCorrect = answers.filter(a => 
+    !a.isSkipped && a.selectedAnswer === a.correctAnswer
+  ).length;
 
-  answers.forEach(a => {
-    if (!partStats[a.part]) {
-      partStats[a.part] = {
-        total: 0,
-        wrong: 0,
-        skipped: 0
-      };
-    }
+  const totalQuestions = answers.length;
 
-    partStats[a.part].total ++;
+  // Tính accuracy Listening và Reading
+  const listeningParts = [1, 2, 3, 4];
+  const readingParts = [5, 6, 7];
 
-    if (a.isSkipped) {
-      partStats[a.part].skipped ++;
-    } else if (a.selectedAnswer !== a.correctAnswer) {
-      partStats[a.part].wrong ++;
-    }
-  });
+  const listeningCorrect = answers.filter(a => 
+    listeningParts.includes(a.part) && 
+    !a.isSkipped && 
+    a.selectedAnswer === a.correctAnswer
+  ).length;
+
+  const listeningTotal = answers.filter(a => listeningParts.includes(a.part)).length;
+
+  const readingCorrect = answers.filter(a => 
+    readingParts.includes(a.part) && 
+    !a.isSkipped && 
+    a.selectedAnswer === a.correctAnswer
+  ).length;
+
+  const readingTotal = answers.filter(a => readingParts.includes(a.part)).length;
+
+  const listeningAccuracy = listeningTotal > 0 
+    ? Math.round((listeningCorrect / listeningTotal) * 100) 
+    : 0;
+
+  const readingAccuracy = readingTotal > 0 
+    ? Math.round((readingCorrect / readingTotal) * 100) 
+    : 0;
+
+  // Calculate scores
+  const totalScaled = (summary.listeningScore || 0) + (summary.readingScore || 0);
+  const listeningCEFR = calculateSectionCEFR(summary.listeningScore, 'listening');
+  const readingCEFR = calculateSectionCEFR(summary.readingScore, 'reading');
+  const overallCEFR = calculateOverallCEFR(summary.listeningScore, summary.readingScore);
 
   try {
-    const prompt = ` Bạn là chuyên gia phân tích kết quả TOEIC, hiểu rõ cấu trúc và cách chấm điểm TOEIC. 
-      QUY TẮC (bắt buộc):
-      - Chỉ phân tích dựa trên các thông tin được cung cấp + BẢNG DỮ LIỆU CHUẨN ETS dưới đây; không suy đoán thêm dữ liệu không có.
-      - Tuyệt đối không chèn nội dung thô tục, xúc phạm, quảng cáo hay bình luận về danh tính người học.
-      - Không hỏi thêm câu hỏi; không đề xuất dịch vụ/đường link.
-      - Trả lời **tiếng Việt** thuần, KHÔNG dùng markdown, không in đậm, không gạch đầu dòng kiểu markdown.
-      - Giọng văn tích cực, trung lập, mang tính huấn luyện; tránh từ ngữ tiêu cực tuyệt đối như "không có khả năng", "không thể".
-      - Khi điểm thấp, diễn đạt theo hướng "chưa hình thành nền tảng" hoặc "cần xây dựng lại từ đầu".
-      - Mỗi câu chỉ truyền tải 1 ý chính và nên có 1 dấu + trước để thể hiện đó là 1 ý.
-      - Mỗi dòng nên ngắn, dễ đọc, ưu tiên câu 10–18 từ.
-      - Cho phép xuống dòng nhiều để tạo khoảng thở thị giác.
-      - Sắp xếp kết quả theo 3 mục rõ ràng (viết có số thứ tự 1→3): điểm mạnh, điểm yếu (cụ thể theo phần), gợi ý cải thiện.
+    const prompt = `Bạn là chuyên gia phân tích TOEIC, sử dụng CHÍNH XÁC dữ liệu thực tế và bảng mapping ETS chính thức.
+QUY TẮC BẮT BUỘC:
+- CHỈ dùng scaled scores có sẵn và bảng mapping ETS chính thức
+- KHÔNG đề cập đến bất kỳ Part nào (Part 1-7)
+- KHÔNG bịa thêm con số hay claim nào
+- KHÔNG quảng cáo, link, dịch vụ hay file tải về
+- Giọng điệu: tích cực, khích lệ, chuyên nghiệp
+- Ngôn ngữ: Tiếng Việt thuần túy, không markdown heading, không **bold**
+- Cấu trúc: 3 mục đánh số rõ ràng
 
-      BẢNG DỮ LIỆU CHUẨN ETS (sử dụng để phân tích, map levels, descriptors):
-      ${TOEIC_CONVERSION_TABLE}
-      ${CEFR_MAPPING}
-      ${COMMON_ADVICE}
+CẤU TRÚC PHÂN TÍCH:
+1. ƯU ĐIỂM (chi tiết và cụ thể):
++ Listening: ${summary.listeningScore}/495 (CEFR: ${listeningCEFR}) - độ chính xác khoảng ${listeningAccuracy}%
++ Reading: ${summary.readingScore}/495 (CEFR: ${readingCEFR}) - độ chính xác khoảng ${readingAccuracy}%
++ Tổng điểm: ${totalScaled}/990 (CEFR tổng thể: ${overallCEFR})
++ Tổng câu đúng: ${totalCorrect}/${totalQuestions}
 
-      KẾT QUẢ TỔNG QUAN: (dùng dữ liệu sau để phân tích, kết hợp với bảng trên):
-      - Tổng số câu: ${summary.totalQuestions}
-      - Đúng: ${summary.correctAnswers}
-      - Sai: ${summary.wrongAnswers}
-      - Bỏ qua: ${summary.skippedQuestions}
-      - Listening: ${summary.listeningScore}/495
-      - Reading: ${summary.readingScore}/495
+2. NHƯỢC ĐIỂM (khách quan, tập trung vào cơ hội cải thiện):
++ Listening và Reading đang ở giai đoạn khởi đầu ${listeningCEFR === readingCEFR ? '- đây là cơ hội tuyệt vời để xây dựng nền tảng vững chắc từ đầu' : 
+  summary.listeningScore < summary.readingScore 
+    ? '- Listening có nhiều tiềm năng tiến bộ nhanh để cân bằng với Reading' 
+    : '- Reading có nhiều tiềm năng tiến bộ nhanh để cân bằng với Listening'}
 
-      PHÂN TÍCH THEO PART (số liệu thật):
-      ${Object.entries(partStats)
-        .map(
-          ([part, s]) =>
-            `Part ${part}: ${s.total} câu, sai ${s.wrong}, bỏ qua ${s.skipped}`
-        )
-        .join("\n")}
+3. GỢI Ý CẢI THIỆN VÀ NHẬN XÉT:
+Lộ trình học tập 30 ngày tiếp theo:
++ Tuần 1-2: Tập trung cải thiện kỹ năng yếu hơn - luyện 60 phút/ngày với ETS official materials
++ Mỗi ngày học 15-20 từ vựng TOEIC mới (từ bài đọc, câu sai, hoặc sách ETS)
++ Tuần 3: Làm 1-2 full tests, review kỹ câu sai và ghi lại từ vựng chưa biết
++ Tuần 4: Luyện tổng hợp, ôn lại từ vựng đã học qua flashcard hoặc ngữ cảnh
+${summary.listeningScore < 275 ? '+ Listening bổ sung: Nghe podcast/business news 20 phút/ngày, luyện shadowing và note từ mới' : '+ Listening bổ sung: Nghe thêm tài liệu thực tế 20 phút/ngày để củng cố'}
+${summary.readingScore < 275 ? '+ Reading bổ sung: Đọc bài báo kinh doanh 20-30 phút/ngày, chú ý tra và ghi nhớ từ vựng chuyên ngành' : '+ Reading bổ sung: Đọc thêm văn bản nghiệp vụ để mở rộng từ vựng và tốc độ đọc'}
++ Xây dựng thói quen học từ vựng bền vững: học qua ngữ cảnh, ôn lại theo phương pháp spaced repetition
+Mục tiêu khả thi trong 3 tháng:
++ Từ ${overallCEFR} hiện tại, hướng tới ${
+  overallCEFR === 'C1' ? 'C1 cao điểm (900+)' :
+  overallCEFR === 'B2' ? 'C1 (Listening ≥490, Reading ≥455)' :
+  overallCEFR === 'B1' ? 'B2 (Listening ≥400, Reading ≥385)' :
+  overallCEFR === 'A2' ? 'B1 (Listening ≥275, Reading ≥275)' :
+  'A2 trở lên'
+}
++ Tăng khoảng ${Math.max(0, 850 - totalScaled)} điểm để đạt mốc 850 phổ biến ở doanh nghiệp
++ Nâng vốn từ vựng TOEIC lên thêm 800-1000 từ phổ biến nhất
+Đánh giá tiềm năng:
++ ${totalScaled >= 700 ? 'Bạn đã có nền tảng rất vững, chỉ cần duy trì và mở rộng từ vựng là có thể đạt 900+' :
+     totalScaled >= 500 ? 'Nền tảng tốt, kết hợp học từ vựng đều đặn sẽ giúp tăng điểm nhanh' :
+     totalScaled >= 300 ? 'Đang tiến bộ rõ rệt, học từ vựng mỗi ngày sẽ tạo bước ngoặt lớn' :
+     'Bạn đang bắt đầu rất tốt, việc học từ vựng đều đặn sẽ mang lại kết quả rõ rệt'}
 
-      YÊU CẦU PHÂN TÍCH:
-      1. Phân tích tình hình hiện tại theo chuẩn TOEIC/CEFR (rất ngắn, dùng descriptors từ bảng). Hãy nêu điểm mạnh trước hợp lý và có cơ sở.
-      2. Nêu điểm yếu, phân tách rõ Listening / Reading nếu có (dựa trên min scores). Phân tích chi tiết theo từng part nếu có thể.
-      3. Gợi ý cải thiện cụ thể, thực hành/nguồn học hoặc loại bài nên luyện (mỗi gợi ý 1 câu, từ COMMON_ADVICE). Thêm 1 câu này, bạn có thể tham khảo các gói nâng cấp tài khoản để trải nghiệm nhiều ưu đãi hơn và xem được nhiều bài học mới, tăng số lượng tạo flashcard.
-      1 câu động viên khích lệ. Sau đó kết thúc bằng lời chào thân thiện.
+THÔNG TIN ETS CHÍNH THỨC:
+${OFFICIAL_CEFR_GUIDELINES}
 
-      Chỉ trả về nội dung theo cấu trúc trên, không thêm chú thích, không in thêm meta hoặc JSON.
-  `;
+YÊU CẦU ĐỊNH DẠNG:
+- Mỗi ý bắt đầu bằng dấu +
+- Câu ngắn gọn, dễ đọc
+- Giọng điệu khích lệ, tích cực
+- Kết thúc bằng 2-3 câu động viên mạnh mẽ, chân thành
+
+Hãy viết phân tích dựa hoàn toàn vào dữ liệu trên, không thêm thông tin ngoài.`;
 
     const response = await axios.post(
       "https://ollama.com/api/generate",
@@ -215,13 +188,35 @@ export const analyzeResult = async (req, res) => {
         headers: {
           "Authorization": `Bearer ${config.ollamaApiKey}`,
           "Content-Type": "application/json"
-        }
+        },
+        timeout: 60000
       }
     );
 
-    res.json({ feedback: response.data.response });
+    if (!response.data || !response.data.response) {
+      throw new Error("Invalid AI response");
+    }
+
+    res.json({
+      feedback: response.data.response.trim(),
+      metadata: {
+        overallCEFR,
+        listeningCEFR,
+        readingCEFR,
+        totalScore: totalScaled,
+        listeningScore: summary.listeningScore || 0,
+        readingScore: summary.readingScore || 0,
+        listeningAccuracy,
+        readingAccuracy,
+        totalCorrect,
+        totalQuestions
+      }
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "AI analysis failed" });
+    console.error("AI Analysis Error:", err.message);
+    res.status(500).json({
+      message: "Phân tích AI thất bại",
+      error: err.message
+    });
   }
 };
