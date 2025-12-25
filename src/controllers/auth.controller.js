@@ -12,7 +12,7 @@ import { verifyRefreshToken, generateAccessToken } from '../utils/jwt.js';
 export const adminLogin = async (req, res) => {
     try {
         const { user, accessToken, refreshToken } = await AuthService.adminLoginService(req.body);
-        res.cookie('refreshToken', refreshToken, {
+        res.cookie('refreshTokenAdmin', refreshToken, {
             httpOnly: true,
             secure: config.cookieSecure,
             sameSite: config.cookieSameSite,
@@ -171,53 +171,37 @@ export const resetPassword = async (req, res) => {
     }
 };
 
-// Logout
-export const logout = async (req, res) => {
-    try {
-        const token = req.cookies.refreshToken;
-        if (token) {
-            const decoded = verifyRefreshToken(token);
-            await redisClient.del(`refreshToken:${decoded.id}`);
-        }
-
-        res.clearCookie("refreshToken", {
-            httpOnly: true,
-            secure: config.cookieSecure,
-            sameSite: config.cookieSameSite,
-        });
-        return success(res, "Đăng xuất thành công!");
-    }
-    catch (err) {
-        console.error("Error logging out user: ", err);
-        return error(res, err.message, 500);
-    }
-};
-
 // Refresh Access Token
 export const refreshToken = async (req, res) => {
     try {
-        const token = req.cookies.refreshToken;
+        const tokenAdmin = req.cookies.refreshTokenAdmin;
+        const tokenUser = req.cookies.refreshToken;
 
-        if (!token) return error(res, 'Không có refresh token', 401);
+        let token, redisKey;
+
+        if (tokenAdmin) {
+            token = tokenAdmin;
+            redisKey = 'refreshTokenAdmin';
+        } else if (tokenUser) {
+            token = tokenUser;
+            redisKey = 'refreshToken';
+        } else {
+            return error(res, 'Không có refresh token', 401);
+        }
 
         const decoded = verifyRefreshToken(token);
-        //console.log("Decoded refresh token:", decoded);
 
         const user = await userModel.findById(decoded.id);
-        //console.log("Found user:", user ? user.email : null);
-        
-        const storedToken = await redisClient.get(`refreshToken:${user._id}`);
-        //console.log("Stored token in Redis:", storedToken);
-
         if (!user || !user.isActive) throw new Error('Người dùng không tồn tại hoặc đã bị vô hiệu hóa');
+
+        const storedToken = await redisClient.get(`${redisKey}:${user._id}`);
         if (!storedToken || storedToken !== token) return error(res, 'Refresh token không hợp lệ hoặc đã bị thu hồi', 401);
-        
+
         const newAccessToken = generateAccessToken({ id: user._id, role: user.role });
-        //console.log("Generated new access token:", newAccessToken);
 
         return success(res, 'Cấp mới access token thành công', { newAccessToken });
     } catch (err) {
-        console.log('Refresh access token invalid', err.message)
+        console.log('Refresh access token invalid', err.message);
         return error(res, err.message, 401);
     }
 };
@@ -295,3 +279,29 @@ export const checkRole = [authenticate, (req, res) => {
         return error(res, err.message, 500);
     }
 }];
+
+// Logout
+export const logout = async (req, res) => {
+    try {
+        const tokenAdmin = req.cookies.refreshTokenAdmin;
+        const tokenUser = req.cookies.refreshToken;
+
+        if (tokenAdmin) {
+            const decoded = verifyRefreshToken(tokenAdmin);
+            await redisClient.del(`refreshTokenAdmin:${decoded.id}`);
+        }
+
+        if (tokenUser) {
+            const decoded = verifyRefreshToken(tokenUser);
+            await redisClient.del(`refreshToken:${decoded.id}`);
+        }
+
+        res.clearCookie("refreshToken", { httpOnly: true, secure: config.cookieSecure, sameSite: config.cookieSameSite });
+        res.clearCookie("refreshTokenAdmin", { httpOnly: true, secure: config.cookieSecure, sameSite: config.cookieSameSite });
+        return success(res, "Đăng xuất thành công!");
+    }
+    catch (err) {
+        console.error("Error logging out user: ", err);
+        return error(res, err.message, 500);
+    }
+};
