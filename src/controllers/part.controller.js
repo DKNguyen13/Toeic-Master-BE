@@ -83,7 +83,7 @@ export const getPartById = async (req, res) => {
 // [POST] /api/parts
 export const createPart = async (req, res) => {
     try {
-        // --- 1️⃣ Lấy dữ liệu từ body ---
+        // --- Lấy dữ liệu từ body ---
         const { partData } = req.body;
 
         if (!partData) {
@@ -95,7 +95,7 @@ export const createPart = async (req, res) => {
 
         const { slug, partNumber, questions, ...optionalData } = parsedData;
 
-        // --- 2️⃣ Validate cơ bản ---
+        // --- Validate cơ bản ---
         if (!slug) {
             return error(res, "Chưa chọn đề thi", 400);
         }
@@ -105,13 +105,13 @@ export const createPart = async (req, res) => {
             return error(res, "Part number phải nằm trong khoảng 1 - 7", 400);
         }
 
-        // --- 3️⃣ Kiểm tra đề thi tồn tại ---
+        // --- Kiểm tra đề thi tồn tại ---
         const test = await Test.findOne({ slug });
         if (!test) {
             return error(res, "Không tìm thấy đề thi", 404);
         }
 
-        // --- 4️⃣ Kiểm tra part đã tồn tại ---
+        // --- Kiểm tra part đã tồn tại ---
         const existingPart = await Part.findOne({
             testId: test._id,
             partNumber: number,
@@ -120,7 +120,7 @@ export const createPart = async (req, res) => {
             return error(res, `Part ${number} đã tồn tại trong đề thi này`, 400);
         }
 
-        // --- 5️⃣ Kiểm tra số lượng câu hỏi theo Part ---
+        // --- Kiểm tra số lượng câu hỏi theo Part ---
         const questionLimits = {
             1: 6,
             2: 25,
@@ -136,16 +136,16 @@ export const createPart = async (req, res) => {
             if (questions.length !== expectedCount) {
                 return error(
                     res,
-                    `❌ Part ${number} yêu cầu ${expectedCount} câu hỏi, hiện tại bạn gửi ${questions.length}`,
+                    `Part ${number} yêu cầu ${expectedCount} câu hỏi, hiện tại bạn gửi ${questions.length}`,
                     400
                 );
             }
         }
 
-        // --- 6️⃣ Xác định category dựa theo partNumber ---
+        // --- Xác định category dựa theo partNumber ---
         const category = number <= 4 ? "Listening" : "Reading";
 
-        // --- 7️⃣ Tạo đối tượng Part ---
+        // --- Tạo đối tượng Part ---
         const part = new Part({
             testId: test._id,
             title: `Part ${number}`,
@@ -157,7 +157,7 @@ export const createPart = async (req, res) => {
 
         await part.save();
 
-        return success(res, "✅ Tạo Part thành công", { part });
+        return success(res, "Tạo Part thành công", { part });
     } catch (err) {
         return error(res, "Lỗi khi tạo Part", 500, err.message);
     }
