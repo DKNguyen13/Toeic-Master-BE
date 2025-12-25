@@ -31,7 +31,7 @@ export const adminLoginService = async ({ email, password }) => {
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
 
-    await redisClient.set(`refreshToken:${user._id}`, refreshToken, { ex: 7 * 24 * 60 * 60 });
+    await redisClient.set(`refreshTokenAdmin:${user._id}`, refreshToken, { ex: 7 * 24 * 60 * 60 });
     const safeUser = { id: user._id, fullname: user.fullname, email: user.email, phone: user.phone, avatarUrl: user.avatarUrl, isActive : user.isActive, role: user.role };
     return { user: safeUser, accessToken, refreshToken };
 };
@@ -134,7 +134,6 @@ export const registerService = async ({ fullname, email, password, phone, dob, a
     }
 
     const hashedPassword = await bcrypt.hash(password, await bcrypt.genSalt(10));
-
     const user = new User({ fullname, email, password: hashedPassword, phone, dob: dobDate, avatarUrl, authType: 'normal', isVerified: true });
     await user.save();
     await redisClient.del(`otp:${email}`);
