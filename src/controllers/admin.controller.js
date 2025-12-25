@@ -89,15 +89,15 @@ export const getRevenueStatsController = async (req, res) => {
 };
 
 // Get admin dashboard data
-export const getAdminDashboard = async (req, res) => {
+export const getAdminDashboardStasts = async (req, res) => {
   try {
     const year = Number(req.query.year) || new Date().getFullYear();
-
-    const [userStats, revenueStats] = await Promise.all([
+    const [userStats, revenueStats, testStats] = await Promise.all([
       AdminService.getUserStats(),
-      AdminService.getTotalRevenueByYear(year)
+      AdminService.getTotalRevenueByYear(year),
+      AdminService.getTestAttemptsStats()
     ]);
-    return success(res, "Lấy dữ liệu dashboard thành công", { userStats, revenueStats });
+    return success(res, "Lấy dữ liệu dashboard thành công", { userStats, revenueStats, testStats });
   } catch (error) {
     console.error('Lỗi Dashboard:', error);
     return error(res, 'Hệ thống lỗi khi lấy dữ liệu dashboard', 500);
