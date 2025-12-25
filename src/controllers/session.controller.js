@@ -1,4 +1,5 @@
 import { success, error } from '../utils/response.js';
+
 import UserTestSession from "../models/userTestSession.model.js";
 import * as sessionTestService from "../services/sessionTest/sessionTest.service.js";
 
@@ -61,6 +62,7 @@ export const submitSession = async (req, res) => {
         await sessionTestService.submitTestSession(sessionId, userId);
         return success(res, 'Nộp bài thành công');
     } catch (err) {
+
         return error(res, 'Error submitting session', 500, err.message);
     }
 };
@@ -132,7 +134,7 @@ export const getUserSessions = async (req, res) => {
 
         return success(
             res,
-            'Lấy lịch sử làm bài của người dùng',
+            'Get user history session',
             {
                 sessions,
                 pagination: {
@@ -144,7 +146,7 @@ export const getUserSessions = async (req, res) => {
         );
 
     } catch (err) {
-        return error(res, 'Không thể lấy lịch sử làm bài của người dùng', 500, err.message);
+        return error(res, 'Error fetching user sessions', 500, err.message);
     }
 };
 
@@ -164,7 +166,7 @@ export const getUserStatistics = async (req, res) => {
         if (completedSessions.length === 0) {
             return success(
                 res,
-                'Người dùng chưa có bài thi full-test nào đã hoàn thành',
+                'No completed full-test sessions found',
                 {
                     totalSessions: 0,
                     averageListeningScore: 0,
@@ -184,7 +186,7 @@ export const getUserStatistics = async (req, res) => {
 
         return success(
             res,
-            'Lấy thống kê điểm trung bình thành công',
+            'Get user statistics successfully',
             {
                 totalSessions: completedSessions.length,
                 averageListeningScore,
@@ -194,6 +196,6 @@ export const getUserStatistics = async (req, res) => {
         );
 
     } catch (err) {
-        return error(res, 'Không thể lấy thống kê điểm của người dùng', 500, err.message);
+        return error(res, 'Error fetching user statistics', 500, err.message);
     }
 };
