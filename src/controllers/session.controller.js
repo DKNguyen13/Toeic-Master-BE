@@ -1,5 +1,4 @@
 import { success, error } from '../utils/response.js';
-
 import UserTestSession from "../models/userTestSession.model.js";
 import * as sessionTestService from "../services/sessionTest/sessionTest.service.js";
 
@@ -14,7 +13,7 @@ export const startSession = async (req, res) => {
             id: session
         });
     } catch (err) {
-        return error(res, 'Error starting session', 500, err.message);
+        return error(res, 'Lỗi khi tạo phiên thi', 500, err.message);
     }
 };
 
@@ -37,16 +36,12 @@ export const submitBulkAnswers = async (req, res) => {
     try {
         const { sessionId } = req.params;
         const { answers } = req.body; // Array of { questionId, selectedAnswer, timeSpent, isFlagged }
-
         const userId = req.user.id;
 
-        if (!Array.isArray(answers) || answers.length === 0) {
-            return error(res, 'Answers array is required and must not be empty');
-        }
+        if (!Array.isArray(answers) || answers.length === 0)    return error(res, 'Mảng câu trả lời không được để trống');
 
         await sessionTestService.submitBulkAnswers(sessionId, userId, answers);
         return success(res, 'Nộp câu hỏi trong phiên thi thành công');
-
     } catch (err) {
         console.log('Lỗi khi nộp bài', err);
         return error(res, `Lỗi nộp bài: ${err.message}`, 500);
@@ -62,10 +57,10 @@ export const submitSession = async (req, res) => {
         await sessionTestService.submitTestSession(sessionId, userId);
         return success(res, 'Nộp bài thành công');
     } catch (err) {
-
-        return error(res, 'Error submitting session', 500, err.message);
+        return error(res, 'Lỗi khi nộp bài', 500, err.message);
     }
 };
+
 // [PUT] /api/session/:sessionId/pause
 export const pauseSession = async (req, res) => {
     try {
@@ -108,7 +103,6 @@ export const getSessionResults = async (req, res) => {
     }
 };
 
-
 // [GET] /api/session/user -- Get user session history
 export const getUserSessions = async (req, res) => {
     try {
@@ -134,7 +128,7 @@ export const getUserSessions = async (req, res) => {
 
         return success(
             res,
-            'Get user history session',
+            'Lấy lịch sử phiên thi thành công',
             {
                 sessions,
                 pagination: {
@@ -146,7 +140,7 @@ export const getUserSessions = async (req, res) => {
         );
 
     } catch (err) {
-        return error(res, 'Error fetching user sessions', 500, err.message);
+        return error(res, 'Lỗi khi lấy lịch sử phiên thi', 500, err.message);
     }
 };
 
@@ -166,7 +160,7 @@ export const getUserStatistics = async (req, res) => {
         if (completedSessions.length === 0) {
             return success(
                 res,
-                'No completed full-test sessions found',
+                'Chưa có phiên full-test nào hoàn thành',
                 {
                     totalSessions: 0,
                     averageListeningScore: 0,
@@ -186,7 +180,7 @@ export const getUserStatistics = async (req, res) => {
 
         return success(
             res,
-            'Get user statistics successfully',
+            'Lấy thống kê điểm người dùng thành công',
             {
                 totalSessions: completedSessions.length,
                 averageListeningScore,
@@ -196,6 +190,6 @@ export const getUserStatistics = async (req, res) => {
         );
 
     } catch (err) {
-        return error(res, 'Error fetching user statistics', 500, err.message);
+        return error(res, 'Lỗi khi lấy thống kê điểm người dùng', 500, err.message);
     }
 };
