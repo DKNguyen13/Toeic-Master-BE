@@ -140,7 +140,7 @@ export const createQuestions = async (req, res) => {
     const processedQuestions = [];
     const isGroupedPart = [3, 4, 6, 7].includes(part.partNumber);
 
-    // ✅ Map để tracking groupId đã tạo cho mỗi group
+    // Map để tracking groupId đã tạo cho mỗi group
     const groupIdMap = new Map();
 
     for (let i = 0; i < questions.length; i++) {
@@ -156,7 +156,7 @@ export const createQuestions = async (req, res) => {
 
       let group = q.group ? { ...q.group } : null;
 
-      // ✅ Xử lý groupId cho part có group
+      // Xử lý groupId cho part có group
       if (isGroupedPart && group) {
         // Nếu group đã có groupId từ FE (từ groups array) → dùng lại
         if (group.groupId) {
@@ -198,7 +198,7 @@ export const createQuestions = async (req, res) => {
           }
         }
       } 
-      // ✅ Xử lý file cho part KHÔNG có group (1, 2, 5)
+      // Xử lý file cho part KHÔNG có group (1, 2, 5)
       else if (!isGroupedPart && group) {
         const imageFile = Array.isArray(req.files)
           ? req.files.find(f => f.fieldname === group.image)
@@ -222,7 +222,7 @@ export const createQuestions = async (req, res) => {
           delete group.audio;
         }
 
-        // ✅ Part không có group → KHÔNG có groupId
+        // Part không có group → KHÔNG có groupId
         delete group.groupId;
       }
 
@@ -256,4 +256,3 @@ export const createQuestions = async (req, res) => {
     session.endSession();
   }
 };
-

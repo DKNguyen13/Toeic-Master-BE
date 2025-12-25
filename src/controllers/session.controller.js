@@ -1,5 +1,4 @@
 import { success, error } from '../utils/response.js';
-
 import UserTestSession from "../models/userTestSession.model.js";
 import * as sessionTestService from "../services/sessionTest/sessionTest.service.js";
 
@@ -62,7 +61,6 @@ export const submitSession = async (req, res) => {
         await sessionTestService.submitTestSession(sessionId, userId);
         return success(res, 'Nộp bài thành công');
     } catch (err) {
-
         return error(res, 'Error submitting session', 500, err.message);
     }
 };
@@ -134,7 +132,7 @@ export const getUserSessions = async (req, res) => {
 
         return success(
             res,
-            'Get user history session',
+            'Lấy lịch sử làm bài của người dùng',
             {
                 sessions,
                 pagination: {
@@ -146,7 +144,7 @@ export const getUserSessions = async (req, res) => {
         );
 
     } catch (err) {
-        return error(res, 'Error fetching user sessions', 500, err.message);
+        return error(res, 'Không thể lấy lịch sử làm bài của người dùng', 500, err.message);
     }
 };
 
@@ -166,7 +164,7 @@ export const getUserStatistics = async (req, res) => {
         if (completedSessions.length === 0) {
             return success(
                 res,
-                'No completed full-test sessions found',
+                'Người dùng chưa có bài thi full-test nào đã hoàn thành',
                 {
                     totalSessions: 0,
                     averageListeningScore: 0,
@@ -186,7 +184,7 @@ export const getUserStatistics = async (req, res) => {
 
         return success(
             res,
-            'Get user statistics successfully',
+            'Lấy thống kê điểm trung bình thành công',
             {
                 totalSessions: completedSessions.length,
                 averageListeningScore,
@@ -196,6 +194,6 @@ export const getUserStatistics = async (req, res) => {
         );
 
     } catch (err) {
-        return error(res, 'Error fetching user statistics', 500, err.message);
+        return error(res, 'Không thể lấy thống kê điểm của người dùng', 500, err.message);
     }
 };

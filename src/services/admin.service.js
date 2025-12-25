@@ -1,5 +1,6 @@
 import userModel from '../models/user.model.js';
 import paymentOrderModel from '../models/paymentOrder.model.js';
+import testModel from '../models/test.model.js';
 
 //Get all users with pagination (exclude admins)
 export const getAllUsers = async (page = 1, limit = 10) => {
@@ -67,6 +68,25 @@ export const getRevenueStats = async ({ type = "month", year }) => {
     }));
 };
 
+// Get test attempts stats
+export const getTestAttemptsStats = async () => {
+  const result = await testModel.aggregate([
+    {
+      $group: {
+        _id: null,
+        totalAttempts: { $sum: "$statistics.totalAttempts" },
+        completedAttempts: { $sum: "$statistics.completedAttempts" }
+      }
+    }
+  ]);
+
+  return {
+    totalAttempts: result[0]?.totalAttempts || 0,
+    completedAttempts: result[0]?.completedAttempts || 0
+  };
+};
+
+// Get user stats
 export const getUserStats = async () => {
   const totalUsers = await userModel.countDocuments({ role: { $ne: 'admin' } });
 
