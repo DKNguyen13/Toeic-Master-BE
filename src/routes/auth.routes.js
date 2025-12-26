@@ -16,7 +16,8 @@ router.post('/send-otp', limitRequest, authController.sendOTP);
 router.post('/send-register-otp', limitRequest, authController.sendRegiOTP);
 router.post('/register', authController.register);
 router.post('/forgot-password', authController.resetPassword);
-router.post('/refresh-token', authController.refreshToken);
+router.post('/refresh-token/user', authController.refreshUserToken);
+router.post('/refresh-token/admin', authController.refreshAdminToken);
 router.post('/support',  authenticate, limitSupport, authController.sendSupportEmail);
 router.post('/logout', authController.logout);
 
