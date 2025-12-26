@@ -172,39 +172,30 @@ export const resetPassword = async (req, res) => {
 };
 
 // Refresh Access Token
-export const refreshToken = async (req, res) => {
-    try {
-        const tokenAdmin = req.cookies.refreshTokenAdmin;
-        const tokenUser = req.cookies.refreshToken;
+export const refreshUserToken = async (req, res) => {
+  const token = req.cookies.refreshToken;
+  if (!token) return error(res, 'Không có refresh token user', 401);
 
-        let token, redisKey;
+  const decoded = verifyRefreshToken(token);
+  const stored = await redisClient.get(`refreshToken:${decoded.id}`);
+  if (stored !== token) return error(res, 'Refresh token user không hợp lệ', 401);
 
-        if (tokenAdmin) {
-            token = tokenAdmin;
-            redisKey = 'refreshTokenAdmin';
-        } else if (tokenUser) {
-            token = tokenUser;
-            redisKey = 'refreshToken';
-        } else {
-            return error(res, 'Không có refresh token', 401);
-        }
-
-        const decoded = verifyRefreshToken(token);
-
-        const user = await userModel.findById(decoded.id);
-        if (!user || !user.isActive) throw new Error('Người dùng không tồn tại hoặc đã bị vô hiệu hóa');
-
-        const storedToken = await redisClient.get(`${redisKey}:${user._id}`);
-        if (!storedToken || storedToken !== token) return error(res, 'Refresh token không hợp lệ hoặc đã bị thu hồi', 401);
-
-        const newAccessToken = generateAccessToken({ id: user._id, role: user.role });
-
-        return success(res, 'Cấp mới access token thành công', { newAccessToken });
-    } catch (err) {
-        console.log('Refresh access token invalid', err.message);
-        return error(res, err.message, 401);
-    }
+  const newAccessToken = generateAccessToken({ id: decoded.id, role: 'user' });
+  return success(res, 'Refresh user token thành công', { newAccessToken });
 };
+
+export const refreshAdminToken = async (req, res) => {
+  const token = req.cookies.refreshTokenAdmin;
+  if (!token) return error(res, 'Không có refresh token admin', 401);
+
+  const decoded = verifyRefreshToken(token);
+  const stored = await redisClient.get(`refreshTokenAdmin:${decoded.id}`);
+  if (stored !== token) return error(res, 'Refresh token admin không hợp lệ', 401);
+
+  const newAccessToken = generateAccessToken({ id: decoded.id, role: 'admin' });
+  return success(res, 'Refresh admin token thành công', { newAccessToken });
+};
+
 
 // Update profile
 export const updateProfileController = async (req, res) => {
