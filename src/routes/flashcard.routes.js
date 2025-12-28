@@ -5,6 +5,7 @@ import * as FlashcardController from '../controllers/flashcard.controller.js';
 const router = express.Router();
 
 router.post('/', authenticate, FlashcardController.createFlashcard);
+router.post('/import', authenticate, FlashcardController.importFlashcardsJSON);
 
 router.get('/', authenticate, FlashcardController.getAllFlashcards);
 router.get('/free', FlashcardController.getAllFlashcardsFree);

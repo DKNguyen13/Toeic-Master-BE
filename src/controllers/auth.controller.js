@@ -20,7 +20,7 @@ export const adminLogin = async (req, res) => {
         });
 
         return success(res, 'Đăng nhập thành công', { 
-            user: { id: user.id, fullname: user.fullname, email : user.email, phone : user.phone, avatarUrl : user.avatarUrl, role : user.role },
+            user: { id: user.id, fullname: user.fullname, email : user.email, phone : user.phone, dob: user.dob, avatarUrl : user.avatarUrl, role : user.role },
             accessToken
         });
     } catch (err) {
@@ -41,7 +41,7 @@ export const login = async (req, res) => {
         });
 
         return success(res, 'Đăng nhập thành công', { 
-            user: { id: user.id, fullname: user.fullname, email : user.email, phone : user.phone, avatarUrl : user.avatarUrl, role : user.role },
+            user: { id: user.id, fullname: user.fullname, email : user.email, phone : user.phone, dob: user.dob, avatarUrl : user.avatarUrl, role : user.role },
             accessToken
         });
     } catch (err) {
