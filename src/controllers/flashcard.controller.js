@@ -149,7 +149,7 @@ export const getAllFlashcardsFree = async (req, res) => {
         const admin = await User.findOne({ role: 'admin' });
         if (!admin) {
             console.log("Admin không tồn tại, vui lòng chạy createAdminIfNotExist trước.");
-            return error(res, 'Hiện tại chưa có dữ liệu.');;
+            return error(res, 'Hiện tại chưa có dữ liệu.');
         }
         const { set: setId } = req.query;
         const query = { user: admin._id };
@@ -203,4 +203,28 @@ export const deleteSet = async (req, res) => {
         console.error(err);
         return error(res, 'Lỗi khi xóa set.');
     }
+};
+
+// Import flashcards (Only admin)
+export const importFlashcardsJSON = async (req, res) => {
+  try {
+    if (req.user.role !== "admin") return error(res, "Không có quyền truy cập", 403);
+    const userId = req.user.id;
+    const { setId, flashcards } = req.body;
+
+    if (!setId || !flashcards || !Array.isArray(flashcards)) return error(res, 'Dữ liệu không hợp lệ', 400);
+
+    let created = 0;
+    for (const data of flashcards) {
+      if (!data.word || !data.meaning) continue;
+      await Flashcard.create({ user: userId, set: setId, ...data });
+      created++;
+    }
+
+    await FlashcardSet.findByIdAndUpdate(setId, { $inc: { count: created } });
+    return success(res, `${created} flashcards đã được import`, flashcards);
+  } catch (err) {
+    console.error(err);
+    return error(res, 'Import flashcard lỗi!');
+  }
 };
