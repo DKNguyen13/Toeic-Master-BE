@@ -10,7 +10,7 @@ export const getAllUsers = async (page = 1, limit = 10) => {
         .select('-password')
         .skip(skip)
         .limit(limit)
-        .sort({ createdAt: -1 });
+        .sort({ fullname: 1 });
 
     const total = await userModel.countDocuments({ role: { $ne: 'admin' } });
 

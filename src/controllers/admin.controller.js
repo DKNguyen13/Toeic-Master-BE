@@ -62,6 +62,26 @@ export const getAllUsersController = async (req, res) => {
     }
 };
 
+// Export all users for Excel (admin only)
+export const exportAllUsersController = async (req, res) => {
+  try {
+    if (req.user.role !== "admin") return error(res, "Không có quyền truy cập", 403);
+
+    const users = await userModel
+      .find({ role: { $ne: "admin" } })
+      .select(
+        "email fullname phone authType isActive role vip statistics createdAt"
+      )
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return success(res, "Danh sách user export", users);
+  } catch (err) {
+    console.error("Export users error:", err);
+    return error(res, "Lỗi export user", 500);
+  }
+};
+
 // Get user detail (admin only)
 export const getUserDetail = async (req, res) => {
   try {
