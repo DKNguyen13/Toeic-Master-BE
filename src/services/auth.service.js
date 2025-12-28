@@ -32,7 +32,7 @@ export const adminLoginService = async ({ email, password }) => {
     const refreshToken = generateRefreshToken(payload);
 
     await redisClient.set(`refreshTokenAdmin:${user._id}`, refreshToken, { ex: 7 * 24 * 60 * 60 });
-    const safeUser = { id: user._id, fullname: user.fullname, email: user.email, phone: user.phone, avatarUrl: user.avatarUrl, isActive : user.isActive, role: user.role };
+    const safeUser = { id: user._id, fullname: user.fullname, email: user.email, phone: user.phone, dob: user.dob, avatarUrl: user.avatarUrl, isActive : user.isActive, role: user.role };
     return { user: safeUser, accessToken, refreshToken };
 };
 
@@ -57,7 +57,7 @@ export const normalLoginService = async ({ email, password }) => {
 
     await redisClient.set(`refreshToken:${user._id}`, refreshToken, { ex: 7 * 24 * 60 * 60 });
 
-    const safeUser = { id: user._id, fullname: user.fullname, email: user.email, phone: user.phone, avatarUrl: user.avatarUrl, isActive : user.isActive, role: user.role };
+    const safeUser = { id: user._id, fullname: user.fullname, email: user.email, phone: user.phone, dob: user.dob, avatarUrl: user.avatarUrl, isActive : user.isActive, role: user.role };
     return { user : safeUser, accessToken, refreshToken };
 };
 

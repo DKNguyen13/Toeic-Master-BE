@@ -12,7 +12,7 @@ router.get("/search-users", authenticate, adminController.searchUsers);
 router.get('/user-detail/:id', authenticate, adminController.getUserDetail);
 router.get('/dashboard', authenticate, adminController.getAdminDashboardStasts);
 router.get("/revenue-stats", authenticate, adminController.getRevenueStatsController);
-
+router.get("/users/export", authenticate, adminController.exportAllUsersController);
 router.patch('/activate', authenticate, adminController.changeActivateUserController);
 
 router.post('/forgot-password', limitRequest, adminController.adminForgotPassword);
