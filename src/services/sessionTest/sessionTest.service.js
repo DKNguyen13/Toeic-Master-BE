@@ -6,529 +6,601 @@ import UserAnswer from "../../models/userAnswer.model.js";
 import { calculateSessionResults } from "../score.service.js";
 
 import {
-    SESSION_TYPE,
-    ACTIVE_SESSION_STATUSES,
-    TOEIC_PARTS,
-    SESSION_STATUS
-} from '../../constants/sessionTest.constants.js';
+  SESSION_TYPE,
+  ACTIVE_SESSION_STATUSES,
+  TOEIC_PARTS,
+  SESSION_STATUS,
+} from "../../constants/sessionTest.constants.js";
 
-    export const startTestSession = async (userId, { testId, sessionType, selectedParts, timeLimit }) => {
-        // Validate test exists
-        const test = await Test.findById(testId);
-        if (!test || !test.isActive) {
-            throw new Error('Đề thi không tồn tại hoặc đã bị xóa');
-        }
+export const startTestSession = async (
+  userId,
+  { testId, sessionType, selectedParts, timeLimit }
+) => {
+  // Validate test exists
+  const test = await Test.findById(testId);
+  if (!test || !test.isActive) {
+    throw new Error("Đề thi không tồn tại hoặc đã bị xóa");
+  }
 
-        await checkActiveSessionTest(userId, testId);
+  await checkActiveSessionTest(userId, testId);
 
-        // Get selected part 
-        const selectedPart = getSelectedPart(sessionType, selectedParts)
+  // Get selected part
+  const selectedPart = getSelectedPart(sessionType, selectedParts);
 
-        // validate test has questions
-        const totalQuestions = await getQuestionCount(testId, selectedPart);
+  // validate test has questions
+  const totalQuestions = await getQuestionCount(testId, selectedPart);
 
-        if (totalQuestions === 0) {
-            return Error('Đề thi hiện tại chưa cập nhật câu hỏi, vui lòng chọn đề thi khác để luyện tập');
-        }
+  if (totalQuestions === 0) {
+    return Error(
+      "Đề thi hiện tại chưa cập nhật câu hỏi, vui lòng chọn đề thi khác để luyện tập"
+    );
+  }
 
-        // Create session
-        const session = new UserTestSession({
-            userId,
-            testId,
-            sessionType,
-            testConfig: {
-                selectedParts: selectedPart,
-                timeLimit: timeLimit || 0,
-                allowReview: true
-            },
-            progress: {
-                totalQuestions,
-                answeredCount: 0,
-                completionPercentage: 0,
-                timeRemaining: timeLimit > 0 ? timeLimit * 60 : null, // convert to seconds
-                totalPauseDuration: 0
-            },
-            status: SESSION_STATUS.STARTED
-        });
+  // Create session
+  const session = new UserTestSession({
+    userId,
+    testId,
+    sessionType,
+    testConfig: {
+      selectedParts: selectedPart,
+      timeLimit: timeLimit || 0,
+      allowReview: true,
+    },
+    progress: {
+      totalQuestions,
+      answeredCount: 0,
+      completionPercentage: 0,
+      timeRemaining: timeLimit > 0 ? timeLimit * 60 : null, // convert to seconds
+      totalPauseDuration: 0,
+    },
+    status: SESSION_STATUS.STARTED,
+  });
 
-        await session.save();
+  await session.save();
 
-        await UserAnswer.create({
-            sessionId: session._id,
-            userId,
-            testId,
-            questions: []
-        });
+  await UserAnswer.create({
+    sessionId: session._id,
+    userId,
+    testId,
+    questions: [],
+  });
 
-        // Update test statistics
-        await Test.findByIdAndUpdate(testId, {
-            $inc: { 'statistics.totalAttempts': 1 }
-        });
+  // Update test statistics
+  await Test.findByIdAndUpdate(testId, {
+    $inc: { "statistics.totalAttempts": 1 },
+  });
 
-        return session._id;
+  return session._id;
+};
+
+export const getTestSession = async (sessionId, userId) => {
+  const session = await getSessionInfo(sessionId, userId);
+
+  console.log("=== SESSION INFO ===");
+  console.log("sessionId:", session._id.toString());
+  console.log("sessionType:", session.sessionType);
+  console.log("status:", session.status);
+  console.log("selectedParts:", session.testConfig.selectedParts);
+
+  let questions = await Question.find({
+    testId: session.testId,
+    partNumber: { $in: session.testConfig.selectedParts },
+  })
+    .sort({ globalQuestionNumber: 1 })
+    .select(
+      "question group choices.label choices.text questionNumber globalQuestionNumber partNumber"
+    );
+  console.log("=== QUESTIONS QUERY RESULT ===");
+  console.log("total questions:", questions.length);
+
+  if (questions.length > 0) {
+    console.log(
+      "first question:",
+      questions[0]._id.toString(),
+      "part:",
+      questions[0].partNumber,
+      "globalQ:",
+      questions[0].globalQuestionNumber
+    );
+  }
+
+  // Get exists answers from UserAnswer
+  const userAnswer = await UserAnswer.findOne({
+    sessionId,
+    userId,
+  }).select(
+    "questions.questionId questions.selectedAnswer questions.timeSpent questions.isSkipped questions.isFlagged"
+  );
+
+  console.log("=== USER ANSWER ===");
+
+  if (!userAnswer) {
+    console.log("❌ UserAnswer NOT FOUND");
+  } else {
+    console.log("UserAnswer found");
+    console.log("total answered questions:", userAnswer.questions.length);
+
+    if (userAnswer.questions.length > 0) {
+      console.log(
+        "first answer questionId:",
+        userAnswer.questions[0].questionId.toString()
+      );
+    }
+  }
+
+  // Map answers to questions
+  const answerMap = {};
+  if (userAnswer && userAnswer.questions) {
+    userAnswer.questions.forEach((answer) => {
+      answerMap[answer.questionId.toString()] = {
+        selectedAnswer: answer.selectedAnswer,
+        timeSpent: answer.timeSpent,
+        isSkipped: answer.isSkipped,
+        isFlagged: answer.isFlagged,
+      };
+    });
+  }
+
+  console.log("=== MAP CHECK ===");
+  questions.forEach((q) => {
+    const qId = q._id.toString();
+    const hasAnswer = answerMap[qId] !== undefined;
+
+    console.log(`[MAP CHECK] Question ${qId} -> hasAnswer:`, hasAnswer);
+  });
+
+  // Merge questions with user answers
+  const questionsWithAnswers = questions.map((q) => ({
+    id: q._id,
+    question: q.question,
+    choices: q.choices,
+    group: q.group,
+    questionNumber: q.questionNumber,
+    globalQuestionNumber: q.globalQuestionNumber,
+    partNumber: q.partNumber,
+    userAnswer: answerMap[q._id.toString()] || null,
+  }));
+
+  const timeRemaining = calculateTimeRemaining({
+    timeLimitMinutes: session.testConfig.timeLimit,
+    startedAt: session.startedAt,
+    resumedAt: session.resumedAt,
+    status: session.status,
+    previousTimeRemainingMinutes: session.progress.timeRemaining, // nếu PAUSED mới dùng
+    timeSpentSeconds: session.timeSpent,
+  });
+
+  const sortedSelectedParts = [...session.testConfig.selectedParts].sort(
+    (a, b) => a - b
+  );
+  // Chọn những field cần thiết cho FE
+  const sessionResponse = {
+    id: session._id,
+    sessionCode: session.sessionCode,
+    sessionType: session.sessionType,
+    testConfig: {
+      selectedParts: sortedSelectedParts,
+      timeLimit: session.testConfig.timeLimit,
+    },
+    audio: session.testId.audio,
+    title: session.testId.title,
+    progress: session.progress,
+    timeRemaining: timeRemaining,
+    status: session.status,
+  };
+
+  return {
+    session: sessionResponse,
+    questions: questionsWithAnswers,
+  };
+};
+
+export const submitBulkAnswers = async (sessionId, userId, answers) => {
+  const session = await UserTestSession.findOne({
+    _id: sessionId,
+    userId,
+    status: { $in: ACTIVE_SESSION_STATUSES },
+  });
+
+  if (!session) {
+    throw new Error("Không tìm thấy phiên làm bài");
+  }
+
+  const questionIds = answers.map((a) => a.questionId);
+  const questions = await Question.find({
+    _id: { $in: questionIds },
+  });
+
+  const questionMap = {};
+  questions.forEach((q) => {
+    questionMap[q._id.toString()] = q;
+  });
+
+  // Get UserAnswer document
+  const userAnswer = await UserAnswer.findOne({
+    sessionId,
+    userId,
+  });
+
+  // Process all answers
+  const processedAnswers = [];
+
+  for (const answer of answers) {
+    const question = questionMap[answer.questionId];
+    if (!question) continue;
+
+    const isCorrect = answer.selectedAnswer === question.correctAnswer;
+    const isSkipped =
+      answer.selectedAnswer === null || answer.selectedAnswer === undefined;
+
+    const existingAnswerIndex = userAnswer.questions.findIndex(
+      (q) => q.questionId.toString() === answer.questionId
+    );
+
+    const answerData = {
+      questionId: answer.questionId,
+      questionNumber: question.questionNumber, // per-part index
+      globalQuestionNumber: question.globalQuestionNumber, // global index (important)
+      partNumber: question.partNumber,
+      selectedAnswer: answer.selectedAnswer || null,
+      isCorrect,
+      timeSpent: answer.timeSpent || 0,
+      isSkipped,
+      isFlagged: answer.isFlagged || false,
     };
 
-    export const getTestSession = async (sessionId, userId) => {
-        const session = await getSessionInfo(sessionId, userId);
+    if (existingAnswerIndex !== -1) {
+      // Update existing answer
+      userAnswer.questions[existingAnswerIndex] = {
+        ...userAnswer.questions[existingAnswerIndex],
+        ...answerData,
+        timeSpent:
+          (userAnswer.questions[existingAnswerIndex].timeSpent || 0) +
+          (answer.timeSpent || 0),
+      };
+    } else {
+      // Add new answer
+      userAnswer.questions.push(answerData);
+    }
 
-        let questions = await Question.find({
-            testId: session.testId,
-            partNumber: { $in: session.testConfig.selectedParts }
-        })
-            .sort({ globalQuestionNumber: 1 })
-            .select('question group choices.label choices.text questionNumber globalQuestionNumber partNumber');
+    processedAnswers.push({
+      questionId: answer.questionId,
+      isCorrect,
+      isSkipped,
+    });
+  }
 
-        // Get exists answers from UserAnswer
-        const userAnswer = await UserAnswer.findOne({
-            sessionId,
-            userId
-        }).select('questions.questionId questions.selectedAnswer questions.timeSpent questions.isSkipped questions.isFlagged');
+  await userAnswer.save();
 
-        // Map answers to questions
-        const answerMap = {};
-        if (userAnswer && userAnswer.questions) {
-            userAnswer.questions.forEach(answer => {
-                answerMap[answer.questionId.toString()] = {
-                    selectedAnswer: answer.selectedAnswer,
-                    timeSpent: answer.timeSpent,
-                    isSkipped: answer.isSkipped,
-                    isFlagged: answer.isFlagged
-                };
-            });
-        }
+  // Update session progress
+  const answeredCount = userAnswer.questions.filter((q) => !q.isSkipped).length;
+  await UserTestSession.findByIdAndUpdate(sessionId, {
+    "progress.answeredCount": answeredCount,
+    "progress.completionPercentage": Math.round(
+      (answeredCount / session.progress.totalQuestions) * 100
+    ),
+    status: "in-progress",
+  });
+};
 
-        // Merge questions with user answers
-        const questionsWithAnswers = questions.map(q => ({
-            id: q._id,
-            question: q.question,
-            choices: q.choices,
-            group: q.group,
-            questionNumber: q.questionNumber,
-            globalQuestionNumber: q.globalQuestionNumber,
-            partNumber: q.partNumber,
-            userAnswer: answerMap[q._id.toString()] || null
-        }));
+export const submitTestSession = async (sessionId, userId) => {
+  const session = await UserTestSession.findOne({
+    _id: sessionId,
+    userId,
+    status: { $in: ACTIVE_SESSION_STATUSES },
+  });
 
-        const timeRemaining = calculateTimeRemaining({
-            timeLimitMinutes: session.testConfig.timeLimit,
-            startedAt: session.startedAt,
-            resumedAt: session.resumedAt,
-            status: session.status,
-            previousTimeRemainingMinutes: session.progress.timeRemaining, // nếu PAUSED mới dùng
-            timeSpentSeconds: session.timeSpent
-        });
-        // Chọn những field cần thiết cho FE
-        const sessionResponse = {
-            id: session._id,
-            sessionCode: session.sessionCode,
-            sessionType: session.sessionType,
-            testConfig: {
-                selectedParts: session.testConfig.selectedParts,
-                timeLimit: session.testConfig.timeLimit,
-            },
-            audio: session.testId.audio,
-            title: session.testId.title,
-            progress: session.progress,
-            timeRemaining: timeRemaining,
-            status: session.status
-        };
+  if (!session) {
+    throw new Error("Không tìm thấy phiên làm bài");
+  }
 
-        return {
-            session: sessionResponse,
-            questions: questionsWithAnswers
-        };
-    };
+  const now = new Date();
 
-    export const submitBulkAnswers = async (sessionId, userId, answers) => {
+  // Calculate final timeSpent correctly
+  const lastActiveTime = session.resumedAt || session.startedAt;
+  const finalActiveTime = Math.floor((now - lastActiveTime) / 1000);
+  session.timeSpent = (session.timeSpent || 0) + finalActiveTime;
 
-        const session = await UserTestSession.findOne({
-            _id: sessionId,
-            userId,
-            status: { $in: ACTIVE_SESSION_STATUSES }
-        });
+  // Get all questions of test session
+  const questions = await Question.find({
+    testId: session.testId,
+    partNumber: { $in: session.testConfig.selectedParts },
+  })
+    .sort({ partNumber: 1, questionNumber: 1 })
+    .select("content choices questionNumber globalQuestionNumber partNumber");
 
-        if (!session) {
-            throw new Error('Không tìm thấy phiên làm bài');
-        }
+  // Get user answer
+  const userAnswer = await UserAnswer.findOne({ sessionId, userId });
+  const answeredIds = new Set(
+    userAnswer.questions.map((q) => q.questionId.toString())
+  );
 
-        const questionIds = answers.map(a => a.questionId);
-        const questions = await Question.find({
-            _id: { $in: questionIds }
-        });
+  // Add question not ans
+  for (const question of questions) {
+    if (!answeredIds.has(question._id.toString())) {
+      userAnswer.questions.push({
+        questionId: question._id,
+        questionNumber: question.globalQuestionNumber,
+        globalQuestionNumber: question.globalQuestionNumber,
+        partNumber: question.partNumber,
+        selectedAnswer: null,
+        isSkipped: true,
+        isCorrect: false,
+        timeSpent: 0,
+        isFlagged: false,
+      });
+    }
+  }
+  await userAnswer.save();
 
-        const questionMap = {};
-        questions.forEach(q => {
-            questionMap[q._id.toString()] = q;
-        });
+  const results = await calculateSessionResults(sessionId, userId);
 
-        // Get UserAnswer document
-        const userAnswer = await UserAnswer.findOne({
-            sessionId,
-            userId
-        });
+  // Update session
+  await session.completeTestSession(results, now);
 
-        // Process all answers
-        const processedAnswers = [];
+  // Update test statistics
+  await Test.findByIdAndUpdate(session.testId, {
+    $inc: { "statistics.completedAttempts": 1 },
+  });
 
-        for (const answer of answers) {
-            const question = questionMap[answer.questionId];
-            if (!question) continue;
+  // Update user statistics
+  const user = await User.findById(userId);
+  if (results.totalScore) {
+    await user.updateStatistics(results);
+  }
+};
 
-            const isCorrect = answer.selectedAnswer === question.correctAnswer;
-            const isSkipped = answer.selectedAnswer === null || answer.selectedAnswer === undefined;
+export const getTestSessionResult = async (sessionId, userId) => {
+  const session = await UserTestSession.findOne({
+    _id: sessionId,
+    userId,
+    status: "completed",
+  }).populate("testId", "title slug testCode");
 
-            const existingAnswerIndex = userAnswer.questions.findIndex(
-                q => q.questionId.toString() === answer.questionId
-            );
+  if (!session) {
+    return error(res, "Không tìm thấy bài làm");
+  }
 
-            const answerData = {
-                questionId: answer.questionId,
-                questionNumber: question.questionNumber,            // per-part index
-                globalQuestionNumber: question.globalQuestionNumber, // global index (important)
-                partNumber: question.partNumber,
-                selectedAnswer: answer.selectedAnswer || null,
-                isCorrect,
-                timeSpent: answer.timeSpent || 0,
-                isSkipped,
-                isFlagged: answer.isFlagged || false
-            };
+  const questions = await Question.find({
+    testId: session.testId,
+    partNumber: { $in: session.testConfig.selectedParts },
+  })
+    .sort({ globalQuestionNumber: 1 })
+    .select(
+      "question group choices questionNumber globalQuestionNumber partNumber correctAnswer explanation"
+    );
+  // Get user answers with populated question details
+  const userAnswer = await UserAnswer.findOne({
+    sessionId,
+    userId,
+  }).select(
+    "questions.questionId questions.selectedAnswer questions.timeSpent questions.isSkipped questions.isFlagged"
+  );
 
-            if (existingAnswerIndex !== -1) {
-                // Update existing answer
-                userAnswer.questions[existingAnswerIndex] = {
-                    ...userAnswer.questions[existingAnswerIndex],
-                    ...answerData,
-                    timeSpent: (userAnswer.questions[existingAnswerIndex].timeSpent || 0) + (answer.timeSpent || 0)
-                };
-            } else {
-                // Add new answer
-                userAnswer.questions.push(answerData);
-            }
+  // Map answers theo questionId
+  const answerMap = {};
+  if (userAnswer?.questions) {
+    userAnswer.questions.forEach((ans) => {
+      answerMap[ans.questionId.toString()] = {
+        selectedAnswer: ans.selectedAnswer,
+        timeSpent: ans.timeSpent,
+        isSkipped: ans.isSkipped,
+        isFlagged: ans.isFlagged,
+      };
+    });
+  }
 
-            processedAnswers.push({
-                questionId: answer.questionId,
-                isCorrect,
-                isSkipped
-            });
-        }
+  // Merge question info + userAnswer
+  const questionsWithAnswers = questions.map((q) => ({
+    id: q._id,
+    question: q.question,
+    choices: q.choices,
+    group: q.group,
+    questionNumber: q.questionNumber,
+    globalQuestionNumber: q.globalQuestionNumber,
+    partNumber: q.partNumber,
+    correctAnswer: q.correctAnswer, // thêm để hiển thị đáp án
+    explanation: q.explanation, // thêm để hiển thị giải thích
+    userAnswer: answerMap[q._id.toString()] || null,
+  }));
 
-        await userAnswer.save();
+  const sortedSelectedParts = [...session.testConfig.selectedParts].sort(
+    (a, b) => a - b
+  );
+  // Chuẩn bị response
+  const sessionResponse = {
+    id: session._id,
+    sessionCode: session.sessionCode,
+    sessionType: session.sessionType,
+    test: session.testId,
+    completedAt: session.completedAt,
+    timeSpent: session.timeSpent,
+    results: session.results,
+    selectedParts: sortedSelectedParts,
+  };
 
-        // Update session progress
-        const answeredCount = userAnswer.questions.filter(q => !q.isSkipped).length;
-        await UserTestSession.findByIdAndUpdate(sessionId, {
-            'progress.answeredCount': answeredCount,
-            'progress.completionPercentage': Math.round((answeredCount / session.progress.totalQuestions) * 100),
-            status: 'in-progress'
-        });
-
-    };
-
-    export const submitTestSession = async (sessionId, userId) => {
-        const session = await UserTestSession.findOne({
-            _id: sessionId,
-            userId,
-            status: { $in: ACTIVE_SESSION_STATUSES }
-        });
-
-        if (!session) {
-            throw new Error('Không tìm thấy phiên làm bài');
-        }
-
-        const now = new Date();
-
-        // Calculate final timeSpent correctly
-        const lastActiveTime = session.startedAt || session.resumedAt;
-        const finalActiveTime = Math.floor((now - lastActiveTime) / 1000);
-        session.timeSpent = (session.timeSpent || 0) + finalActiveTime;
-
-        // Get all questions of test session
-        const questions = await Question.find({
-            testId: session.testId,
-            partNumber: { $in: session.testConfig.selectedParts }
-        })
-            .sort({ partNumber: 1, questionNumber: 1 })
-            .select('content choices questionNumber globalQuestionNumber partNumber');
-
-        // Get user answer
-        const userAnswer = await UserAnswer.findOne({ sessionId, userId });
-        const answeredIds = new Set(userAnswer.questions.map(q => q.questionId.toString()));
-
-        // Add question not ans
-        for (const question of questions) {
-            if (!answeredIds.has(question._id.toString())) {
-                userAnswer.questions.push({
-                    questionId: question._id,
-                    questionNumber: question.globalQuestionNumber,
-                    globalQuestionNumber: question.globalQuestionNumber,
-                    partNumber: question.partNumber,
-                    selectedAnswer: null,
-                    isSkipped: true,
-                    isCorrect: false,
-                    timeSpent: 0,
-                    isFlagged: false
-                });
-            }
-        }
-        await userAnswer.save();
-
-        const results = await calculateSessionResults(sessionId, userId);
-
-        // Update session
-        await session.completeTestSession(results, now);
-
-        // Update test statistics
-        await Test.findByIdAndUpdate(session.testId, {
-            $inc: { 'statistics.completedAttempts': 1 }
-        });
-
-        // Update user statistics
-        const user = await User.findById(userId);
-        if (results.totalScore) {
-            await user.updateStatistics(results);
-        }
-    };
-
-    export const getTestSessionResult = async (sessionId, userId) => {
-        const session = await UserTestSession.findOne({
-            _id: sessionId,
-            userId,
-            status: 'completed'
-        }).populate('testId', 'title slug testCode');
-
-        if (!session) {
-            return error(res, 'Không tìm thấy bài làm');
-        }
-
-        const questions = await Question.find({
-            testId: session.testId,
-            partNumber: { $in: session.testConfig.selectedParts }
-        })
-            .sort({ globalQuestionNumber: 1 })
-            .select('question group choices questionNumber globalQuestionNumber partNumber correctAnswer explanation');
-        // Get user answers with populated question details
-        const userAnswer = await UserAnswer.findOne({
-            sessionId,
-            userId
-        }).select('questions.questionId questions.selectedAnswer questions.timeSpent questions.isSkipped questions.isFlagged');
-
-        // Map answers theo questionId
-        const answerMap = {};
-        if (userAnswer?.questions) {
-            userAnswer.questions.forEach((ans) => {
-                answerMap[ans.questionId.toString()] = {
-                    selectedAnswer: ans.selectedAnswer,
-                    timeSpent: ans.timeSpent,
-                    isSkipped: ans.isSkipped,
-                    isFlagged: ans.isFlagged,
-                };
-            });
-        }
-
-        // Merge question info + userAnswer
-        const questionsWithAnswers = questions.map((q) => ({
-            id: q._id,
-            question: q.question,
-            choices: q.choices,
-            group: q.group,
-            questionNumber: q.questionNumber,
-            globalQuestionNumber: q.globalQuestionNumber,
-            partNumber: q.partNumber,
-            correctAnswer: q.correctAnswer,     // thêm để hiển thị đáp án
-            explanation: q.explanation,         // thêm để hiển thị giải thích
-            userAnswer: answerMap[q._id.toString()] || null
-        }));
-
-        // Chuẩn bị response
-        const sessionResponse = {
-            id: session._id,
-            sessionCode: session.sessionCode,
-            sessionType: session.sessionType,
-            test: session.testId,
-            completedAt: session.completedAt,
-            timeSpent: session.timeSpent,
-            results: session.results,
-            selectedParts: session.testConfig.selectedParts
-        };
-
-        return {
-            session: sessionResponse,
-            answers: questionsWithAnswers
-        };
-    };
-
+  return {
+    session: sessionResponse,
+    answers: questionsWithAnswers,
+  };
+};
 
 // Pause session
 export const pauseTestSession = async (sessionId, userId) => {
-    const session = await UserTestSession.findOne({
-        _id: sessionId,
-        userId,
-        status: { $in: [SESSION_STATUS.STARTED, SESSION_STATUS.IN_PROGRESS] }
-    });
+  const session = await UserTestSession.findOne({
+    _id: sessionId,
+    userId,
+    status: { $in: [SESSION_STATUS.STARTED, SESSION_STATUS.IN_PROGRESS] },
+  });
 
-    if (!session) {
-        throw new Error('Không tìm thấy phiên làm bài hợp lệ');
-    }
+  if (!session) {
+    throw new Error("Không tìm thấy phiên làm bài hợp lệ");
+  }
 
-    const now = new Date();
+  const now = new Date();
 
-    // check session expired (7 days)
-    if (now > session.expiredAt) {
-        session.status = SESSION_STATUS.TIMEOUT;
-        session.completedAt = now;
-        await session.save();
-        throw new Error('Phiên thi đã hết hạn');
-    }
-
-    // calculate active time in this session
-    const lastActiveTime = session.resumedAt || session.startedAt;
-    const activeTimeThisSession = Math.floor((now - lastActiveTime) / 1000);
-
-    // update total timeSpent
-    session.timeSpent = (session.timeSpent || 0) + activeTimeThisSession;
-
-    // calc timeRemaining if has time limit
-    const timeLimit = session.testConfig.timeLimit
-    let timeRemaining = null;
-    if (timeLimit > 0) {
-        const timeLimitSeconds = timeLimit * 60;
-        timeRemaining = Math.max(0, timeLimitSeconds - session.timeSpent);
-
-        if (timeRemaining <= 0) {
-            session.status = SESSION_STATUS.TIMEOUT;
-            session.completedAt = now;
-            session.progress.timeRemaining = 0;
-            await session.save();
-            throw new Error('Hết thời gian làm bài');
-        }
-
-        session.progress.timeRemaining = timeRemaining;
-    }
-    else {
-        session.progress.timeRemaining = timeRemaining;
-    }
-
-    // update session
-    session.status = SESSION_STATUS.PAUSED;
-    session.pausedAt = now;
-
+  // check session expired (7 days)
+  if (now > session.expiredAt) {
+    session.status = SESSION_STATUS.TIMEOUT;
+    session.completedAt = now;
     await session.save();
+    throw new Error("Phiên thi đã hết hạn");
+  }
+
+  // calculate active time in this session
+  const lastActiveTime = session.resumedAt || session.startedAt;
+  const activeTimeThisSession = Math.floor((now - lastActiveTime) / 1000);
+
+  // update total timeSpent
+  session.timeSpent = (session.timeSpent || 0) + activeTimeThisSession;
+
+  // calc timeRemaining if has time limit
+  const timeLimit = session.testConfig.timeLimit;
+  let timeRemaining = null;
+  if (timeLimit > 0) {
+    const timeLimitSeconds = timeLimit * 60;
+    timeRemaining = Math.max(0, timeLimitSeconds - session.timeSpent);
+
+    if (timeRemaining <= 0) {
+      session.status = SESSION_STATUS.TIMEOUT;
+      session.completedAt = now;
+      session.progress.timeRemaining = 0;
+      await session.save();
+      throw new Error("Hết thời gian làm bài");
+    }
+
+    session.progress.timeRemaining = timeRemaining;
+  } else {
+    session.progress.timeRemaining = timeRemaining;
+  }
+
+  // update session
+  session.status = SESSION_STATUS.PAUSED;
+  session.pausedAt = now;
+
+  await session.save();
 };
 
 export const resumeTestSession = async (sessionId, userId) => {
-    const session = await UserTestSession.findOne({
-        _id: sessionId,
-        userId,
-        status: SESSION_STATUS.PAUSED
-    });
+  const session = await UserTestSession.findOne({
+    _id: sessionId,
+    userId,
+    status: SESSION_STATUS.PAUSED,
+  });
 
-    if (!session) {
-        throw new Error('Không tìm thấy phiên làm bài hợp lệ');
-    }
+  if (!session) {
+    throw new Error("Không tìm thấy phiên làm bài hợp lệ");
+  }
 
-    const now = new Date();
+  const now = new Date();
 
-    // check session expired (7 days)
-    if (now > session.expiredAt) {
-        session.status = SESSION_STATUS.TIMEOUT;
-        session.completedAt = now;
-        await session.save();
-        throw new Error('Phiên thi đã hết hạn');
-    }
-
-    const timeLimit = session.testConfig.timeLimit;
-    const timeRemaining = session.progress.timeRemaining;
-
-    // if has time limit
-    if (timeLimit && timeLimit > 0) {
-        if (timeRemaining === null || timeRemaining === undefined) {
-            throw new Error('Không tìm thấy thông tin thời gian còn lại');
-        }
-
-        // check timeRemaining
-        if (timeRemaining <= 0) {
-            session.status = SESSION_STATUS.TIMEOUT;
-            session.completedAt = now;
-            await session.save();
-            throw new Error('Hết thời gian làm bài');
-        }
-    }
-
-    // calc total pause duration
-    if(session.pausedAt) {
-        const pauseDuration = Math.floor((now - session.pausedAt) / 1000);
-        session.progress.totalPauseDuration = (session.progress.totalPauseDuration || 0) + pauseDuration;
-    }
-
-    // resume session
-    session.status = SESSION_STATUS.IN_PROGRESS;
-    session.resumedAt = now;
-
+  // check session expired (7 days)
+  if (now > session.expiredAt) {
+    session.status = SESSION_STATUS.TIMEOUT;
+    session.completedAt = now;
     await session.save();
+    throw new Error("Phiên thi đã hết hạn");
+  }
 
+  const timeLimit = session.testConfig.timeLimit;
+  const timeRemaining = session.progress.timeRemaining;
+
+  // if has time limit
+  if (timeLimit && timeLimit > 0) {
+    if (timeRemaining === null || timeRemaining === undefined) {
+      throw new Error("Không tìm thấy thông tin thời gian còn lại");
+    }
+
+    // check timeRemaining
+    if (timeRemaining <= 0) {
+      session.status = SESSION_STATUS.TIMEOUT;
+      session.completedAt = now;
+      await session.save();
+      throw new Error("Hết thời gian làm bài");
+    }
+  }
+
+  // calc total pause duration
+  if (session.pausedAt) {
+    const pauseDuration = Math.floor((now - session.pausedAt) / 1000);
+    session.progress.totalPauseDuration =
+      (session.progress.totalPauseDuration || 0) + pauseDuration;
+  }
+
+  // resume session
+  session.status = SESSION_STATUS.IN_PROGRESS;
+  session.resumedAt = now;
+
+  await session.save();
 };
 
 // Helper function
 const checkActiveSessionTest = async (userId, testId) => {
-    const activeSession = await UserTestSession.findOne({
-        userId,
-        testId,
-        status: { $in: ACTIVE_SESSION_STATUSES }
-    });
+  const activeSession = await UserTestSession.findOne({
+    userId,
+    testId,
+    status: { $in: ACTIVE_SESSION_STATUSES },
+  });
 
-    if (activeSession) {
-        throw new Error('Bạn đang làm bài của đề thi này, Vui lòng truy cập trang lịch sử làm bài và tiếp tục.');
-    }
+  if (activeSession) {
+    throw new Error(
+      "Bạn đang làm bài của đề thi này, Vui lòng truy cập trang lịch sử làm bài và tiếp tục."
+    );
+  }
 };
 
 const getSelectedPart = (sessionType, selectedParts) => {
-    return sessionType === SESSION_TYPE.FULL_TEST ? TOEIC_PARTS.ALL : selectedParts;
+  return sessionType === SESSION_TYPE.FULL_TEST
+    ? TOEIC_PARTS.ALL
+    : selectedParts;
 };
 
 const getQuestionCount = async (testId, parts) => {
-    return await Question.countDocuments({
-        testId,
-        partNumber: { $in: parts }
-    });
+  return await Question.countDocuments({
+    testId,
+    partNumber: { $in: parts },
+  });
 };
 
 const getSessionInfo = async (sessionId, userId) => {
-    const session = await UserTestSession.findOne({
-        _id: sessionId,
-        userId,
-        status: { $in: ACTIVE_SESSION_STATUSES }
-    }).populate('testId', 'title slug testCode audio');
+  const session = await UserTestSession.findOne({
+    _id: sessionId,
+    userId,
+    status: { $in: ACTIVE_SESSION_STATUSES },
+  }).populate("testId", "title slug testCode audio");
 
-    if (!session) {
-        throw new Error('Active session not found');
-    }
+  if (!session) {
+    throw new Error("Active session not found");
+  }
 
-    return session;
+  return session;
 };
 
 const calculateTimeRemaining = ({
-    timeLimitMinutes,
-    startedAt,
-    resumedAt = null,
-    status,
-    previousTimeRemainingMinutes = 0,
-    timeSpentSeconds = 0
+  timeLimitMinutes,
+  startedAt,
+  resumedAt = null,
+  status,
+  previousTimeRemainingMinutes = 0,
+  timeSpentSeconds = 0,
 }) => {
-    // Không giới hạn thời gian
-    if (!timeLimitMinutes || timeLimitMinutes <= 0) {
-        return null;
-    }
+  // Không giới hạn thời gian
+  if (!timeLimitMinutes || timeLimitMinutes <= 0) {
+    return null;
+  }
 
-    // Nếu đang PAUSED → lấy giá trị đã lưu (phút → giây)
-    if (status === SESSION_STATUS.PAUSED) {
-        return Math.max(0, previousTimeRemainingMinutes * 60);
-    }
+  // Nếu đang PAUSED → lấy giá trị đã lưu (phút → giây)
+  if (status === SESSION_STATUS.PAUSED) {
+    return Math.max(0, previousTimeRemainingMinutes * 60);
+  }
 
-    // Tính cho session đang active
-    const timeLimitSeconds = timeLimitMinutes * 60;
-    const lastActiveTime = resumedAt || startedAt;
-    const currentActiveSeconds = Math.floor((Date.now() - lastActiveTime.getTime()) / 1000);
-    const totalTimeSpent = timeSpentSeconds + currentActiveSeconds;
+  // Tính cho session đang active
+  const timeLimitSeconds = timeLimitMinutes * 60;
+  const lastActiveTime = resumedAt || startedAt;
+  const currentActiveSeconds = Math.floor(
+    (Date.now() - lastActiveTime.getTime()) / 1000
+  );
+  const totalTimeSpent = timeSpentSeconds + currentActiveSeconds;
 
-    return Math.max(0, timeLimitSeconds - totalTimeSpent);
+  return Math.max(0, timeLimitSeconds - totalTimeSpent);
 };
