@@ -9,6 +9,7 @@ const router = express.Router();
 
 router.get('/users', authenticate, adminController.getAllUsersController);
 router.get("/search-users", authenticate, adminController.searchUsers);
+router.get('/user-detail/:id', authenticate, adminController.getUserDetail);
 router.get('/dashboard', authenticate, adminController.getAdminDashboardStasts);
 router.get("/revenue-stats", authenticate, adminController.getRevenueStatsController);
 
