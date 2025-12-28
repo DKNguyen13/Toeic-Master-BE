@@ -62,6 +62,19 @@ export const getAllUsersController = async (req, res) => {
     }
 };
 
+// Get user detail (admin only)
+export const getUserDetail = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') return error(res, 'Không có quyền truy cập', 403);
+    const { id } = req.params;
+    const user = await userModel.findById(id).select('-password') .lean();
+    if (!user) return error(res, 'Không tìm thấy người dùng', 404);
+    return success(res, 'Chi tiết người dùng', user);
+  } catch (err) {
+    return error(res, err.message, 500);
+  }
+};
+
 //Inactivate user (admin only)
 export const changeActivateUserController = async (req, res) => {
     try {
