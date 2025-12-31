@@ -5,8 +5,8 @@ import { config } from '../config/env.config.js';
 import { OAuth2Client } from "google-auth-library";
 import redisClient from '../config/redis.config.js';
 import { uploadAvatar } from './cloudinary.service.js';
-import { sendOTPEmail, sendResetPasswordEmail, sendSupportEmail } from './mail.service.js';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt.js';
+import { sendOTPEmail, sendResetPasswordEmail, sendSupportEmail } from './mail.service.js';
 
 const client = new OAuth2Client(config.googleClientId);
 
@@ -31,8 +31,8 @@ export const adminLoginService = async ({ email, password }) => {
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
 
-    await redisClient.set(`refreshToken:${user._id}`, refreshToken, { ex: 7 * 24 * 60 * 60 });
-    const safeUser = { id: user._id, fullname: user.fullname, email: user.email, phone: user.phone, avatarUrl: user.avatarUrl, isActive : user.isActive, role: user.role };
+    await redisClient.set(`refreshTokenAdmin:${user._id}`, refreshToken, { ex: 7 * 24 * 60 * 60 });
+    const safeUser = { id: user._id, fullname: user.fullname, email: user.email, phone: user.phone, dob: user.dob, avatarUrl: user.avatarUrl, isActive : user.isActive, role: user.role };
     return { user: safeUser, accessToken, refreshToken };
 };
 
@@ -57,7 +57,7 @@ export const normalLoginService = async ({ email, password }) => {
 
     await redisClient.set(`refreshToken:${user._id}`, refreshToken, { ex: 7 * 24 * 60 * 60 });
 
-    const safeUser = { id: user._id, fullname: user.fullname, email: user.email, phone: user.phone, avatarUrl: user.avatarUrl, isActive : user.isActive, role: user.role };
+    const safeUser = { id: user._id, fullname: user.fullname, email: user.email, phone: user.phone, dob: user.dob, avatarUrl: user.avatarUrl, isActive : user.isActive, role: user.role };
     return { user : safeUser, accessToken, refreshToken };
 };
 
@@ -76,6 +76,7 @@ export const googleLoginService = async ({ tokenId }) => {
     
     if (user) {
         if (user.authType === 'normal') throw new Error('Email đã được đăng ký. Vui lòng đăng nhập bằng mật khẩu.');
+        if (!user.isActive) throw new Error('Tài khoản bị vô hiệu hóa!');
     } else {
         user = new User({ 
             fullname: name, 
@@ -102,7 +103,7 @@ export const googleLoginService = async ({ tokenId }) => {
         role: user.role 
     };
     
-    await redisClient.set(`refreshToken:${user.id}`, refreshToken, { ex: 7*24*60*60 });
+    await redisClient.set(`refreshToken:${user._id}`, refreshToken, { ex: 7*24*60*60 });
     return { user: safeUser, accessToken, refreshToken };
 };
 
@@ -133,7 +134,6 @@ export const registerService = async ({ fullname, email, password, phone, dob, a
     }
 
     const hashedPassword = await bcrypt.hash(password, await bcrypt.genSalt(10));
-
     const user = new User({ fullname, email, password: hashedPassword, phone, dob: dobDate, avatarUrl, authType: 'normal', isVerified: true });
     await user.save();
     await redisClient.del(`otp:${email}`);

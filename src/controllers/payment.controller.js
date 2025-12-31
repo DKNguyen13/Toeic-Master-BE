@@ -46,14 +46,23 @@ export const createPayment = async (req, res) => {
     const now = new Date();
 
     if (user.vip && user.vip.isActive && user.vip.endDate && user.vip.endDate > now) {
-        console.log(`User vẫn còn gói VIP đến ${user.vip.endDate}`);
+      console.log(`User vẫn còn gói VIP đến ${user.vip.endDate}`);
+      const packageOrder = ['basic', 'advanced', 'premium'];
+      const currentIndex = packageOrder.indexOf(user.vip.type);
+      const newIndex = packageOrder.indexOf(pkg.type);
+
+      if (user.vip.type === 'premium') {
         return res.status(400).json({
-            message: `Bạn vẫn còn gói VIP đang chạy đến ${user.vip.endDate.toLocaleDateString()}`,
-      });
+          message: `Bạn đang sử dụng gói Premium cao cấp và không thể nâng cấp thêm. Gói của bạn có hiệu lực đến ${moment(user.vip.endDate).format("DD/MM/YYYY")}.`,
+        });
+      }
+      if (newIndex <= currentIndex) {
+        return res.status(400).json({message: `Gói của bạn đã ở mức cao hơn hoặc bằng gói hiện tại. Vui lòng chọn gói cao cấp hơn.`});
+      }
     }
     
     const createDate = moment(now).format("YYYYMMDDHHmmss");
-    const orderId = Date.now().toString(); // duy nhất
+    const orderId = Date.now().toString();
 
     let ipAddr =
       req.headers["x-forwarded-for"] ||
@@ -136,15 +145,23 @@ export const returnPayment = async (req, res) => {
     const newEndDate = new Date(currentEnd);
     newEndDate.setMonth(newEndDate.getMonth() + pkg.durationMonths);
 
+    const packageOrder = ['basic', 'advanced', 'premium'];
+    const currentIndex = packageOrder.indexOf(user.vip.type);
+    const newIndex = packageOrder.indexOf(pkg.type);
+
+
     order.startDate = now;
     order.endDate = newEndDate;
 
+    if (newIndex > currentIndex) {
+      user.vip.type = pkg.type;
+      user.vip.endDate = newEndDate;
+      user.vip.isActive = true;
+    } else if (newIndex === currentIndex) {
+      user.vip.endDate = newEndDate;
+    }
 
-    await User.findByIdAndUpdate(user._id, {
-      "vip.isActive": true,
-      "vip.type": pkg.type,
-      "vip.endDate": newEndDate,
-    });
+    await user.save();
 
     order.status = "success";
     order.isActive = true;

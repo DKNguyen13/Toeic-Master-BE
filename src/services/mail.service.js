@@ -5,7 +5,7 @@ const mailersend = new MailerSend({
   apiKey: config.mailersendApiKey,
 });
 
-const fromSender = new Sender("toeicmaster@test-y7zpl98359o45vx6.mlsender.net", "Toeic Master");
+const fromSender = new Sender(`${config.mailersendFromEmail}`, `${config.mailersendFromName}`);
 
 // Send OTP email
 export const sendOTPEmail = async (to, otp) => {
@@ -189,7 +189,7 @@ export const sendSupportEmail = async (fromUserEmail, userName, issueTitle, issu
   </html>
   `;
 
-  const recipients = [new Recipient(`${config.supportEmail}`)];
+  const recipients = [new Recipient(`${config.adminEmail}`)];
 
   const emailParams = new EmailParams()
     .setFrom(fromSender)
@@ -205,4 +205,23 @@ export const sendSupportEmail = async (fromUserEmail, userName, issueTitle, issu
     console.error('Error sending support email:', error);
     throw new Error('Gửi yêu cầu hỗ trợ thất bại');
   }
+};
+
+export const sendResetPasswordLinkEmail = async (to, resetToken) => {
+  const resetLink = `${config.adminUrl}/reset-password?token=${resetToken}`;
+
+  const htmlContent = `
+    <h2>Đặt lại mật khẩu Admin</h2>
+    <p>Bạn đã yêu cầu đặt lại mật khẩu.</p>
+    <a href="${resetLink}">Nhấn vào đây để đặt lại mật khẩu</a>
+    <p>Link có hiệu lực trong 15 phút.</p>
+  `;
+  const recipients = [new Recipient(`${config.supportEmail}`)];
+  const emailParams = new EmailParams()
+    .setFrom(fromSender)
+    .setTo(recipients)
+    .setSubject("Reset mật khẩu Admin")
+    .setHtml(htmlContent);
+
+  await mailersend.email.send(emailParams);
 };

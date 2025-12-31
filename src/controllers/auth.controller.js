@@ -4,6 +4,7 @@ import { config } from "../config/env.config.js";
 import redisClient from "../config/redis.config.js";
 import { success, error } from '../utils/response.js';
 import * as AuthService from '../services/auth.service.js';
+import Notification from "../models/notification.model.js";
 import { authenticate } from '../middleware/authenticate.js';
 import { verifyRefreshToken, generateAccessToken } from '../utils/jwt.js';
 
@@ -11,7 +12,7 @@ import { verifyRefreshToken, generateAccessToken } from '../utils/jwt.js';
 export const adminLogin = async (req, res) => {
     try {
         const { user, accessToken, refreshToken } = await AuthService.adminLoginService(req.body);
-        res.cookie('refreshToken', refreshToken, {
+        res.cookie('refreshTokenAdmin', refreshToken, {
             httpOnly: true,
             secure: config.cookieSecure,
             sameSite: config.cookieSameSite,
@@ -19,7 +20,7 @@ export const adminLogin = async (req, res) => {
         });
 
         return success(res, 'Đăng nhập thành công', { 
-            user: { id: user.id, fullname: user.fullname, email : user.email, phone : user.phone, avatarUrl : user.avatarUrl, role : user.role },
+            user: { id: user.id, fullname: user.fullname, email : user.email, phone : user.phone, dob: user.dob, avatarUrl : user.avatarUrl, role : user.role },
             accessToken
         });
     } catch (err) {
@@ -40,7 +41,7 @@ export const login = async (req, res) => {
         });
 
         return success(res, 'Đăng nhập thành công', { 
-            user: { id: user.id, fullname: user.fullname, email : user.email, phone : user.phone, avatarUrl : user.avatarUrl, role : user.role },
+            user: { id: user.id, fullname: user.fullname, email : user.email, phone : user.phone, dob: user.dob, avatarUrl : user.avatarUrl, role : user.role },
             accessToken
         });
     } catch (err) {
@@ -116,11 +117,36 @@ export const sendRegiOTP = async (req, res) => {
 export const sendSupportEmail = async (req, res) => {
     try {
         const userId = req.user.id;
-        const user = await userModel.findById(userId).select("email");
+        const user = await userModel
+            .findById(userId)
+            .select("fullname email avatarUrl");
         if (!user) return error(res, "Người dùng không tồn tại", 404);
 
         const { name, title, content } = req.body;
         const result = await AuthService.sendSupportEmailService(user.email, name, title, content);
+        const admins = await userModel.find({ role: "admin" }).select("_id name avatar");
+        if (admins.length > 0) {
+            await Notification.insertMany(
+                admins.map(admin => ({
+                    recipientId: admin._id,
+                    senderId: user._id,
+                    type: "system",
+                    title: user.fullname ? `Hỗ trợ từ ${user.fullname}` : "Người dùng",
+                    message: `${title}: ${content}`,
+                    data: { senderName: user.name, avatarUrl: user.avatar },
+                    priority: "high"
+                }))
+            );
+        }
+
+        await Notification.createNotification({
+            recipientId: user._id,
+            type: "system",
+            title: "Bạn đã gửi yêu cầu hỗ trợ",
+            message: `Chúng tôi đã nhận yêu cầu: "${title}"`,
+            data: { senderName: "Hệ thống" },
+            priority: "normal"
+        });
         return success(res, result.message);
     } catch (err) {
         console.log("Send support email fail:", err.message);
@@ -145,56 +171,31 @@ export const resetPassword = async (req, res) => {
     }
 };
 
-// Logout
-export const logout = async (req, res) => {
-    try {
-        const token = req.cookies.refreshToken;
-        if (token) {
-            const decoded = verifyRefreshToken(token);
-            await redisClient.del(`refreshToken:${decoded.id}`);
-        }
-
-        res.clearCookie("refreshToken", {
-            httpOnly: true,
-            secure: config.cookieSecure,
-            sameSite: config.cookieSameSite,
-        });
-        return success(res, "Đăng xuất thành công!");
-    }
-    catch (err) {
-        console.error("Error logging out user: ", err);
-        return error(res, err.message, 500);
-    }
-};
-
 // Refresh Access Token
-export const refreshToken = async (req, res) => {
-    try {
-        const token = req.cookies.refreshToken;
+export const refreshUserToken = async (req, res) => {
+  const token = req.cookies.refreshToken;
+  if (!token) return error(res, 'Không có refresh token user', 401);
 
-        if (!token) return error(res, 'Không có refresh token', 401);
+  const decoded = verifyRefreshToken(token);
+  const stored = await redisClient.get(`refreshToken:${decoded.id}`);
+  if (stored !== token) return error(res, 'Refresh token user không hợp lệ', 401);
 
-        const decoded = verifyRefreshToken(token);
-        //console.log("Decoded refresh token:", decoded);
-
-        const user = await userModel.findById(decoded.id);
-        //console.log("Found user:", user ? user.email : null);
-        
-        const storedToken = await redisClient.get(`refreshToken:${user._id}`);
-        //console.log("Stored token in Redis:", storedToken);
-
-        if (!user || !user.isActive) throw new Error('Người dùng không tồn tại hoặc đã bị vô hiệu hóa');
-        if (!storedToken || storedToken !== token) return error(res, 'Refresh token không hợp lệ hoặc đã bị thu hồi', 401);
-        
-        const newAccessToken = generateAccessToken({ id: user._id, role: user.role });
-        //console.log("Generated new access token:", newAccessToken);
-
-        return success(res, 'Cấp mới access token thành công', { newAccessToken });
-    } catch (err) {
-        console.log('Refresh access token invalid', err.message)
-        return error(res, err.message, 401);
-    }
+  const newAccessToken = generateAccessToken({ id: decoded.id, role: 'user' });
+  return success(res, 'Refresh user token thành công', { newAccessToken });
 };
+
+export const refreshAdminToken = async (req, res) => {
+  const token = req.cookies.refreshTokenAdmin;
+  if (!token) return error(res, 'Không có refresh token admin', 401);
+
+  const decoded = verifyRefreshToken(token);
+  const stored = await redisClient.get(`refreshTokenAdmin:${decoded.id}`);
+  if (stored !== token) return error(res, 'Refresh token admin không hợp lệ', 401);
+
+  const newAccessToken = generateAccessToken({ id: decoded.id, role: 'admin' });
+  return success(res, 'Refresh admin token thành công', { newAccessToken });
+};
+
 
 // Update profile
 export const updateProfileController = async (req, res) => {
@@ -269,3 +270,29 @@ export const checkRole = [authenticate, (req, res) => {
         return error(res, err.message, 500);
     }
 }];
+
+// Logout
+export const logout = async (req, res) => {
+    try {
+        const tokenAdmin = req.cookies.refreshTokenAdmin;
+        const tokenUser = req.cookies.refreshToken;
+
+        if (tokenAdmin) {
+            const decoded = verifyRefreshToken(tokenAdmin);
+            await redisClient.del(`refreshTokenAdmin:${decoded.id}`);
+        }
+
+        if (tokenUser) {
+            const decoded = verifyRefreshToken(tokenUser);
+            await redisClient.del(`refreshToken:${decoded.id}`);
+        }
+
+        res.clearCookie("refreshToken", { httpOnly: true, secure: config.cookieSecure, sameSite: config.cookieSameSite });
+        res.clearCookie("refreshTokenAdmin", { httpOnly: true, secure: config.cookieSecure, sameSite: config.cookieSameSite });
+        return success(res, "Đăng xuất thành công!");
+    }
+    catch (err) {
+        console.error("Error logging out user: ", err);
+        return error(res, err.message, 500);
+    }
+};
