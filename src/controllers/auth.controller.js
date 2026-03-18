@@ -261,6 +261,42 @@ export const checkPremiumAccess = [authenticate, async (req, res) => {
     }
 }];
 
+export const getMe = [authenticate, async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        const user = await userModel.findById(userId).select("name email vip");
+
+        if (!user) return error(res, "Người dùng không tồn tại", 404);
+
+        const now = new Date();
+
+        let tier = "basic";
+
+        if (
+        user.vip?.isActive &&
+        user.vip?.endDate &&
+        user.vip.endDate > now
+        ) {
+        tier = user.vip.type;
+        }
+
+        return success(res, "Lấy thông tin user thành công", {
+        user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+        },
+        tier,
+        vip: user.vip || null,
+        });
+
+    } catch (err) {
+        console.error("Get me error:", err.message);
+        return error(res, "Lỗi server", 500);
+    }
+}];
+
 // Check role
 export const checkRole = [authenticate, (req, res) => {
     try {
