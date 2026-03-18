@@ -28,5 +28,6 @@ router.get('/profile', authenticate, authController.getProfile);
 router.get('/check-role', authController.checkRole);
 router.get('/purchase-history', authenticate, getUserPurchaseHistory);
 router.get('/check-vip', authenticate, authController.checkPremiumAccess);
+router.get("/me", authenticate, authController.getMe);
 
 export default router;
