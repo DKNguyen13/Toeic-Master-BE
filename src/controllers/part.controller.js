@@ -2,6 +2,8 @@ import Test from "../models/test.model.js";
 import Part from "../models/part.model.js";
 import Question from "../models/question.model.js";
 import { success, error } from '../utils/response.js';
+import { v4 } from 'uuid';
+import { putObject } from "../utils/putObject.js";
 
 // [GET] /api/test/:slug/parts
 export const getAllParts = async (req, res) => {
@@ -40,7 +42,7 @@ export const getAllParts = async (req, res) => {
     }
 };
 
-// [GET] /api/test/:slug/parts/:partId
+// [GET] /api/test/:slug/part/:partId
 export const getPartById = async (req, res) => {
     try {
 
@@ -80,7 +82,7 @@ export const getPartById = async (req, res) => {
     }
 };
 
-// [POST] /api/parts
+// [POST] /api/part
 export const createPart = async (req, res) => {
     try {
         // --- Lấy dữ liệu từ body ---
@@ -164,37 +166,59 @@ export const createPart = async (req, res) => {
 };
 
 
-// [PUT] /api/test/:slug/parts/:partId
+// [PUT] /api/part/:partId
 export const updatePart = async (req, res) => {
-    try {
-        // validate input
+  try {
+    const { partId } = req.params //từ URL param
+    const { instructions, description, totalQuestions } = req.body
+    const file = req.file
 
-        const { slug, partId } = req.params;
-
-        // Check test exists
-        const test = await Test.findOne({ slug });
-        if (!test) {
-            return error(res, 'Test not found');
-        }
-
-        const updateData = { ...req.body };
-
-        const part = await Part.findOneAndUpdate(
-            { _id: partId, testId: test._id },
-            updateData,
-            { new: true, runValidators: true },
-        ).populate('testId', 'title slug');
-
-        if (!part) {
-            return error(res, 'Part not found');
-        }
-
-        return success(res, 'Update part success', { part })
-    } catch (error) {
-        return error(res, 'Update part error');
+    const part = await Part.findById(partId)
+    if (!part) {
+      return error(res, "Part not found")
     }
-};
 
+    if(instructions !== undefined) {
+        part.instructions = instructions
+    }
+
+    if(description !== undefined) {
+        part.description = description
+    }
+
+    let audioUpdate = {}
+
+    if (file) {
+      if (!part.key) {
+        // Lần đầu upload
+        const fileName = "audio/" + v4()
+        const { url, key } = await putObject(file.buffer, fileName)
+        if (!url || !key) return error(res, "Error uploading file")
+        audioUpdate = { audioFile: url, key }
+      } else {
+        // Đã có file cũ → ghi đè lên cùng key
+        const { url, key } = await putObject(file.buffer, part.key)
+        if (!url || !key) return error(res, "Error uploading file")
+        audioUpdate = { audioFile: url, key }
+      }
+    }
+
+    // Nếu không có file → giữ nguyên audio, chỉ update fields khác
+    const updatedPart = await Part.findOneAndUpdate(
+      { _id: partId },
+      { ...audioUpdate, instructions, description, totalQuestions },
+      { new: true, runValidators: true },
+    )
+
+    if (!updatedPart) {
+      return error(res, "Update part failed")
+    }
+
+    return success(res, "Update part success", { updatedPart }) // trả về doc mới
+  } catch (err) {
+    return error(res, "Update part error", err.message);
+  }
+}
 // [DELETE] /api/test/:slug/parts/:partId
 export const deletePart = async (req, res) => {
     try {

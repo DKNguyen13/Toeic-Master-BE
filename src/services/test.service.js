@@ -62,25 +62,25 @@ export const updateTestComplete = async (slug, updateData) => {
       await updateTestInfo(existingTest._id, testInfo, session);
     }
 
-    if (parts?.length) {
-      validateParts(parts);
-      await updateParts(existingTest._id, parts, session);
-    }
+    // if (parts?.length) {
+    //   validateParts(parts);
+    //   await updateParts(existingTest._id, parts, session);
+    // }
 
-    if (questions?.length) {
-      validateQuestions(questions);
-      await updateQuestions(existingTest._id, questions, session);
-    }
+    // if (questions?.length) {
+    //   validateQuestions(questions);
+    //   await updateQuestions(existingTest._id, questions, session);
+    // }
 
     await session.commitTransaction();
 
     return {
       test: await Test.findById(existingTest._id),
-      parts: await Part.find({ testId: existingTest._id }).sort({ partNumber: 1 }),
-      questions: await Question.find({ testId: existingTest._id }).sort({
-        partNumber: 1,
-        questionNumber: 1,
-      }),
+      // parts: await Part.find({ testId: existingTest._id }).sort({ partNumber: 1 }),
+      // questions: await Question.find({ testId: existingTest._id }).sort({
+      //   partNumber: 1,
+      //   questionNumber: 1,
+      // }),
     };
   } catch (err) {
     await session.abortTransaction();

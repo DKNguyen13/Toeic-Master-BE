@@ -11,15 +11,15 @@ router.get('/', getAllQuestionByTest);
 router.get('/parts', getAllQuestionByPart);
 
 // Lấy chi tiết 1 question
-// router.get('/api/test/:testId/parts/:partId/questions/:questionId', getQuestionById);
+// router.get('/api/question/:questionId', getQuestionById);
 
 // Tạo question trong part
 router.post('/', upload.any(), createQuestions);
 
 // Cập nhật question
-// router.put('/api/test/:testId/parts/:partId/questions/:questionId', updateQuestion);
+// router.put('/api/question/:questionId', updateQuestion);
 
 // Xóa question
-// router.delete('/api/test/:testId/parts/:partId/questions/:questionId', deleteQuestion);
+// router.delete('/api/question/:questionId', deleteQuestion);
 
 export default router;

@@ -12,6 +12,7 @@
   "author": "Dương Khánh Nguyên - Nguyễn Nhật Nguyên",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1004.0",
     "@upstash/redis": "^1.35.8",
     "axios": "^1.11.0",
     "bcryptjs": "^3.0.2",
@@ -35,8 +36,10 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.6",
     "redis": "^5.8.2",
+    "streamifier": "^0.1.1",
     "socket.io": "^4.8.1",
     "streamifier": "^0.1.1",
+    "uuid": "^13.0.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

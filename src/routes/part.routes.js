@@ -1,4 +1,5 @@
 import express from 'express';
+import { upload } from "../middleware/upload.middleware.js"
 import { createPart, deletePart, getAllParts, getPartById, updatePart } from '../controllers/part.controller.js';
 import {authenticate, isAdmin} from "../middleware/authenticate.js";
 
@@ -14,7 +15,7 @@ router.get('/:partId', getPartById);
 router.post('/', authenticate, isAdmin, createPart);
 
 // Update part
-router.put('/:partId', updatePart);
+router.put('/:partId', authenticate, isAdmin, upload.single('file'), updatePart);
 
 // Delete part
 router.delete('/:partId', deletePart);
