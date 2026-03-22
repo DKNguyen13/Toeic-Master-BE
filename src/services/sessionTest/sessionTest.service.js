@@ -1,6 +1,7 @@
 import UserTestSession from "../../models/userTestSession.model.js";
 import User from "../../models/user.model.js";
 import Test from "../../models/test.model.js";
+import Part from "../../models/part.model.js";
 import Question from "../../models/question.model.js";
 import UserAnswer from "../../models/userAnswer.model.js";
 import { calculateSessionResults } from "../score.service.js";
@@ -75,6 +76,16 @@ export const startTestSession = async (
 
 export const getTestSession = async (sessionId, userId) => {
   const session = await getSessionInfo(sessionId, userId);
+
+  const parts = await Part.find({
+    testId: session.testId,
+    partNumber: { $in: session.testConfig.selectedParts },
+  }).select("partNumber audioFile")
+    .sort({ partNumber: 1 });
+  const partAudioMap = {};
+  parts.forEach(part => {
+    partAudioMap[part.partNumber] = part.audioFile;
+  });
 
   console.log("=== SESSION INFO ===");
   console.log("sessionId:", session._id.toString());
@@ -187,7 +198,8 @@ export const getTestSession = async (sessionId, userId) => {
     progress: session.progress,
     timeRemaining: timeRemaining,
     status: session.status,
-  };
+    partsAudio: partAudioMap
+  }
 
   return {
     session: sessionResponse,
@@ -207,6 +219,7 @@ export const submitBulkAnswers = async (sessionId, userId, answers) => {
   }
 
   const questionIds = answers.map((a) => a.questionId);
+
   const questions = await Question.find({
     _id: { $in: questionIds },
   });
@@ -216,68 +229,77 @@ export const submitBulkAnswers = async (sessionId, userId, answers) => {
     questionMap[q._id.toString()] = q;
   });
 
-  // Get UserAnswer document
-  const userAnswer = await UserAnswer.findOne({
-    sessionId,
-    userId,
+  let userAnswer = await UserAnswer.findOne({ sessionId, userId });
+
+  if (!userAnswer) {
+    userAnswer = new UserAnswer({
+      sessionId,
+      userId,
+      questions: [],
+    });
+  }
+
+  // Map để tối ưu
+  const answerMap = new Map();
+  userAnswer.questions.forEach((q, idx) => {
+    answerMap.set(q.questionId.toString(), idx);
   });
 
-  // Process all answers
-  const processedAnswers = [];
-
   for (const answer of answers) {
-    const question = questionMap[answer.questionId];
+    const question = questionMap[answer.questionId.toString()];
     if (!question) continue;
 
-    const isCorrect = answer.selectedAnswer === question.correctAnswer;
-    const isSkipped =
-      answer.selectedAnswer === null || answer.selectedAnswer === undefined;
+    const isSkipped = !answer.answer;
+    const isCorrect = answer.answer === question.correctAnswer;
 
-    const existingAnswerIndex = userAnswer.questions.findIndex(
-      (q) => q.questionId.toString() === answer.questionId
-    );
+    const existingIndex = answerMap.get(answer.questionId.toString());
 
     const answerData = {
       questionId: answer.questionId,
-      questionNumber: question.questionNumber, // per-part index
-      globalQuestionNumber: question.globalQuestionNumber, // global index (important)
+      questionNumber: question.questionNumber,
+      globalQuestionNumber: question.globalQuestionNumber,
       partNumber: question.partNumber,
-      selectedAnswer: answer.selectedAnswer || null,
+      selectedAnswer: answer.answer || null,
       isCorrect,
-      timeSpent: answer.timeSpent || 0,
+      timeSpent: 0,
       isSkipped,
-      isFlagged: answer.isFlagged || false,
+      isFlagged: false,
+      timestamp: answer.timestamp,
     };
 
-    if (existingAnswerIndex !== -1) {
-      // Update existing answer
-      userAnswer.questions[existingAnswerIndex] = {
-        ...userAnswer.questions[existingAnswerIndex],
+    if (existingIndex !== undefined) {
+      const existing = userAnswer.questions[existingIndex];
+
+      // chống race condition
+      if (
+        existing.timestamp &&
+        answer.timestamp &&
+        existing.timestamp > answer.timestamp
+      ) {
+        continue;
+      }
+
+      userAnswer.questions[existingIndex] = {
+        ...existing,
         ...answerData,
-        timeSpent:
-          (userAnswer.questions[existingAnswerIndex].timeSpent || 0) +
-          (answer.timeSpent || 0),
       };
     } else {
-      // Add new answer
       userAnswer.questions.push(answerData);
     }
-
-    processedAnswers.push({
-      questionId: answer.questionId,
-      isCorrect,
-      isSkipped,
-    });
   }
 
   await userAnswer.save();
 
-  // Update session progress
-  const answeredCount = userAnswer.questions.filter((q) => !q.isSkipped).length;
+  const answeredCount = userAnswer.questions.filter(
+    (q) => !q.isSkipped
+  ).length;
+
+  const total = session.progress.totalQuestions || 1;
+
   await UserTestSession.findByIdAndUpdate(sessionId, {
     "progress.answeredCount": answeredCount,
     "progress.completionPercentage": Math.round(
-      (answeredCount / session.progress.totalQuestions) * 100
+      (answeredCount / total) * 100
     ),
     status: "in-progress",
   });
