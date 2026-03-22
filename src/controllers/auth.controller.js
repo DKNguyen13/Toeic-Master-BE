@@ -271,14 +271,10 @@ export const getMe = [authenticate, async (req, res) => {
 
         const now = new Date();
 
-        let tier = "basic";
+        let tier = "free";
 
-        if (
-        user.vip?.isActive &&
-        user.vip?.endDate &&
-        user.vip.endDate > now
-        ) {
-        tier = user.vip.type;
+        if (user.vip?.isActive && user.vip?.endDate && user.vip.endDate > now) {
+            tier = user.vip.type;
         }
 
         return success(res, "Lấy thông tin user thành công", {
