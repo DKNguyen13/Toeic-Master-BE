@@ -1,6 +1,7 @@
 import { Groq } from "groq-sdk";
 import mongoose from "mongoose";
 import { promptPrefix } from "../../utils/constant.js";
+import { handleStaticIntent } from "./chatbotStatic.js";
 import { getAllPackages } from "../../services/vipPackage.service.js";
 import { getLessonListText } from "../../controllers/lesson.controller.js";
 
@@ -65,7 +66,7 @@ export function initChatbotSocket(io, options = {}) {
 
         socket.on('message', async (message, userId) => {
             try {
-                // Kiểm tra rate limit
+                // Rate limit
                 const rateLimitCheck = checkRateLimit(userId);
                 if (!rateLimitCheck.allowed) {
                     const msg = rateLimitCheck.reason === 'minute'
@@ -75,25 +76,42 @@ export function initChatbotSocket(io, options = {}) {
                     return;
                 }
 
+                // Normalize input
                 const trimmedMsg = normalizeMessage(message);
                 const skipMessages = ["hi", "xin chào", "hello", "chào", "hi bạn", "xin chào bạn", "hello bạn", "chào bạn",
                     "hi cậu", "xin chào cậu", "hello cậu", "chào cậu", "cảm ơn", "cảm ơn cậu", "cảm ơn bạn", "cảm tạ", "cảm tạ cậu", "tuyệt vời", " tuyệt vời quá", "quá đã"
                 ];
                 if (skipMessages.some(msg => msg === trimmedMsg)) {
-                    socket.emit('response', "Chúc bạn học tốt nhé!");
+                    socket.emit('response', "Chào bạn. Chúc bạn học tập hiệu quả và luôn vui vẻ! 😊. Cảm ơn bạn đã đồng hành cùng chúng mình!");
                     return;
                 }
 
+                // Load package & lesson info
                 const packages = await getAllPackages();
                 const packageListText = packages
-                    .map((pkg, index) =>
-                        `${index + 1}. Gói ${pkg.name || pkg.type.toUpperCase()} — Giá gốc: ${pkg.originalPrice.toLocaleString()}đ, Giá ưu đãi: ${pkg.discountedPrice.toLocaleString()}đ. Mô tả: ${pkg.description}`
-                    )
-                    .join("\n");
+                        .map((pkg, index) => {
+                            const title = `${index + 1}. Gói ${pkg.name || pkg.type.toUpperCase()}`;
+                            const price = `• Giá gốc: ${pkg.originalPrice.toLocaleString()}đ\n• Giá ưu đãi: ${pkg.discountedPrice.toLocaleString()}đ`;
+
+                            const description = pkg.description
+                            .split(/\.\s+/)
+                            .map(s => s.trim())
+                            .filter(Boolean)
+                            .map(s => `• ${s}`)
+                            .join("\n");
+
+                            return `${title}\n${price}\n${description}`;
+                        })
+                        .join("\n\n");
                 const lessonListText = await getLessonListText();
 
-                const fullUserMessage = promptPrefix(packageListText, lessonListText) + message;
+                const staticResponse = handleStaticIntent(message, packageListText, lessonListText);
+                if (staticResponse) {
+                socket.emit('response', staticResponse);
+                return;
+                }
 
+                const fullUserMessage = promptPrefix(packageListText, lessonListText) + message;
                 socket.data.chatHistory.push({ role: "user", content: fullUserMessage });
 
                 const completion = await groq.chat.completions.create({
@@ -104,7 +122,6 @@ export function initChatbotSocket(io, options = {}) {
                 });
 
                 const aiResponse = completion.choices[0]?.message?.content || "Xin lỗi, tôi không hiểu.";
-
                 socket.data.chatHistory.push({ role: "assistant", content: aiResponse });
 
                 if (socket.data.chatHistory.length > 60) {
@@ -113,11 +130,10 @@ export function initChatbotSocket(io, options = {}) {
                         ...socket.data.chatHistory.slice(-40)
                     ];
                 }
-
                 socket.emit('response', aiResponse);
             } catch (error) {
                 console.error('Error sending message to Groq:', error);
-                let errorMsg = 'Có lỗi xảy ra, vui lòng thử lại.';
+                let errorMsg = 'Hệ thống hiện đang bảo trì hoặc gặp sự cố tạm thời. Chúng tôi xin lỗi vì sự bất tiện này, vui lòng thử lại sau ít phút.';
                 if (error.status === 429 || error?.response?.status === 429) {
                     errorMsg = 'Hệ thống đang quá tải (rate limit Groq). Vui lòng thử lại sau vài phút.';
                 }
