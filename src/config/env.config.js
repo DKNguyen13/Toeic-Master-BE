@@ -20,15 +20,11 @@ export const config = {
     redisToken: process.env.REDIS_TOKEN,
 
     // Mail
-    mailHost: process.env.MAIL_HOST,
-    mailPort: process.env.MAIL_PORT,
-    mailUser: process.env.MAIL_USER,
-    mailPass: process.env.MAIL_PASS,
-    mailersendApiKey: process.env.MAILERSEND_API_KEY,
-    supportEmail: process.env.SUPPORT_EMAIL,
+    resendApiKey: process.env.RESEND_API_KEY,
+    mailFromEmail: process.env.MAIL_FROM_EMAIL,
+    mailFromName: process.env.MAIL_FROM_NAME || "Toeic Master",
     adminEmail: process.env.ADMIN_EMAIL,
-    mailersendFromEmail: process.env.MAILERSEND_FROM_EMAIL,
-    mailersendFromName: process.env.MAILERSEND_FROM_NAME || "Toeic Master",
+    supportEmail: process.env.SUPPORT_EMAIL,
 
     // Google reCAPTCHA
     recaptchaSecret: process.env.RECAPTCHA_SECRET_KEY,
