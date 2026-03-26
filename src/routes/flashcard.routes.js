@@ -6,6 +6,7 @@ const router = express.Router();
 
 router.post('/', authenticate, FlashcardController.createFlashcard);
 router.post('/import', authenticate, FlashcardController.importFlashcardsJSON);
+router.post("/bulk", authenticate, FlashcardController.createFlashcardsBulk);
 
 router.get('/', authenticate, FlashcardController.getAllFlashcards);
 router.get('/free', FlashcardController.getAllFlashcardsFree);
