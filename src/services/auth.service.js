@@ -7,6 +7,7 @@ import redisClient from '../config/redis.config.js';
 import { uploadAvatar } from './cloudinary.service.js';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt.js';
 import { sendOTPEmail, sendResetPasswordEmail, sendSupportEmail } from './mail.service.js';
+import { scheduleReminder } from './reminder.service.js';
 
 const client = new OAuth2Client(config.googleClientId);
 
@@ -40,7 +41,7 @@ export const adminLoginService = async ({ email, password }) => {
 export const normalLoginService = async ({ email, password }) => {
     if ( !email || !password ) throw new Error('Vui lòng nhập email và mật khẩu');
     
-    const user = await User.findOne({ email });
+    let user = await User.findOne({ email });
     if (!user) throw new Error('Email không tồn tại');
     if (!user.isActive) throw new Error('Tài khoản bị vô hiệu hóa!');
     if (user.authType !== 'normal') throw new Error(`Tài khoản này đăng ký bằng ${user.authType}. Vui lòng đăng nhập bằng Google.`);
@@ -56,7 +57,12 @@ export const normalLoginService = async ({ email, password }) => {
     const refreshToken = generateRefreshToken(payload);
 
     await redisClient.set(`refreshToken:${user._id}`, refreshToken, { ex: 7 * 24 * 60 * 60 });
+    
+    // update last login
+    user.lastLoginAt = new Date();
+    await user.save();
 
+    await scheduleReminder(user._id); // lên lịch nhắc nhở sau 7 ngày
     const safeUser = { id: user._id, fullname: user.fullname, email: user.email, phone: user.phone, dob: user.dob, avatarUrl: user.avatarUrl, isActive : user.isActive, role: user.role };
     return { user : safeUser, accessToken, refreshToken };
 };
@@ -92,7 +98,7 @@ export const googleLoginService = async ({ tokenId }) => {
     const payload = { id: user._id, role: user.role };
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
-
+        
     const safeUser = { 
         id: user._id, 
         fullname: user.fullname, 
@@ -104,6 +110,11 @@ export const googleLoginService = async ({ tokenId }) => {
     };
     
     await redisClient.set(`refreshToken:${user._id}`, refreshToken, { ex: 7*24*60*60 });
+    // update last login
+    user.lastLoginAt = new Date();
+    await user.save();
+
+    await scheduleReminder(user._id); 
     return { user: safeUser, accessToken, refreshToken };
 };
 
