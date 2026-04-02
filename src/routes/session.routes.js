@@ -1,6 +1,7 @@
 import express from 'express';
 
 import { authenticate } from '../middleware/authenticate.js';
+import { trackActivityMiddleware } from '../middleware/trackActivity.middleware.js';
 
 import {
     getTestSession, getSessionResults, getUserSessions,
@@ -12,6 +13,7 @@ import {
 const router = express.Router();
 
 router.use(authenticate); // use authenticate for this router
+router.use(trackActivityMiddleware); // Middleware để track hoạt động của user, đặt sau authenticate để có user info
 
 router.post("/start", startSession);
 router.get('/user', getUserSessions);

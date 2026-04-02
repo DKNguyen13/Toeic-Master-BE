@@ -40,7 +40,7 @@ export const adminLoginService = async ({ email, password }) => {
 export const normalLoginService = async ({ email, password }) => {
     if ( !email || !password ) throw new Error('Vui lòng nhập email và mật khẩu');
     
-    const user = await User.findOne({ email });
+    let user = await User.findOne({ email });
     if (!user) throw new Error('Email không tồn tại');
     if (!user.isActive) throw new Error('Tài khoản bị vô hiệu hóa!');
     if (user.authType !== 'normal') throw new Error(`Tài khoản này đăng ký bằng ${user.authType}. Vui lòng đăng nhập bằng Google.`);
@@ -56,7 +56,6 @@ export const normalLoginService = async ({ email, password }) => {
     const refreshToken = generateRefreshToken(payload);
 
     await redisClient.set(`refreshToken:${user._id}`, refreshToken, { ex: 7 * 24 * 60 * 60 });
-
     const safeUser = { id: user._id, fullname: user.fullname, email: user.email, phone: user.phone, dob: user.dob, avatarUrl: user.avatarUrl, isActive : user.isActive, role: user.role };
     return { user : safeUser, accessToken, refreshToken };
 };
@@ -92,7 +91,7 @@ export const googleLoginService = async ({ tokenId }) => {
     const payload = { id: user._id, role: user.role };
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
-
+        
     const safeUser = { 
         id: user._id, 
         fullname: user.fullname, 

@@ -206,3 +206,35 @@ export const sendResetPasswordLinkEmail = async (to, resetToken) => {
     html,
   });
 };
+
+// Send reminder email after 7 days of inactivity
+export const sendReminderEmail = async (to, fullname) => {
+  const html = `
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="UTF-8">
+    <style>
+      body { font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 0; }
+      .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 12px; padding: 40px; }
+      .button { display: inline-block; margin: 20px 0; background: #2a4d9b; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2 style="color: #3498db;">Bạn đã bỏ lỡ việc học TOEIC 📚</h2>
+      <p>Chào ${fullname || "bạn"},</p>
+      <p>Đã 7 ngày bạn chưa quay lại học TOEIC. Hãy tiếp tục luyện tập để không bị mất kiến thức nhé!</p>
+      <a href="${config.frontendUrl}" class="button" style="color: #fff;">Học ngay!</a>
+      <p style="color: #666; font-size: 14px;">Nếu bạn đã quay lại, hãy bỏ qua email này.</p>
+    </div>
+  </body>
+  </html>
+  `
+
+  await sendEmail({
+    to,
+    subject: "📚 Nhắc nhở học TOEIC - Toeic Master",
+    html,
+  })
+}
