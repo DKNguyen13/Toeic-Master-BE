@@ -222,10 +222,10 @@ export const sendReminderEmail = async (to, fullname) => {
   </head>
   <body>
     <div class="container">
-      <h2 style="color: #2a4d9b;">Bạn đã bỏ lỡ việc học TOEIC 📚</h2>
+      <h2 style="color: #3498db;">Bạn đã bỏ lỡ việc học TOEIC 📚</h2>
       <p>Chào ${fullname || "bạn"},</p>
       <p>Đã 7 ngày bạn chưa quay lại học TOEIC. Hãy tiếp tục luyện tập để không bị mất kiến thức nhé!</p>
-      <a href="${config.frontendUrl}" class="button">Học ngay</a>
+      <a href="${config.frontendUrl}" class="button" style="color: #fff;">Học ngay!</a>
       <p style="color: #666; font-size: 14px;">Nếu bạn đã quay lại, hãy bỏ qua email này.</p>
     </div>
   </body>
