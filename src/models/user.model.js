@@ -47,9 +47,10 @@ const userSchema = new mongoose.Schema(
       avgScore: { type: Number, default: 0 },
       bestScore: { type: Number, default: 0 },
     },
-    lastLoginAt: {
+    lastActivityAt: {
       type: Date,
       default: null,
+      index: true, // Thêm index để query nhanh hơn
     },
     lastRemindedAt: {
       type: Date,

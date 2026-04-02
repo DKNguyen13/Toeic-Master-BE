@@ -7,7 +7,6 @@ import redisClient from '../config/redis.config.js';
 import { uploadAvatar } from './cloudinary.service.js';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt.js';
 import { sendOTPEmail, sendResetPasswordEmail, sendSupportEmail } from './mail.service.js';
-import { scheduleReminder } from './reminder.service.js';
 
 const client = new OAuth2Client(config.googleClientId);
 
@@ -57,12 +56,6 @@ export const normalLoginService = async ({ email, password }) => {
     const refreshToken = generateRefreshToken(payload);
 
     await redisClient.set(`refreshToken:${user._id}`, refreshToken, { ex: 7 * 24 * 60 * 60 });
-    
-    // update last login
-    user.lastLoginAt = new Date();
-    await user.save();
-
-    await scheduleReminder(user._id); // lên lịch nhắc nhở sau 7 ngày
     const safeUser = { id: user._id, fullname: user.fullname, email: user.email, phone: user.phone, dob: user.dob, avatarUrl: user.avatarUrl, isActive : user.isActive, role: user.role };
     return { user : safeUser, accessToken, refreshToken };
 };
@@ -110,11 +103,6 @@ export const googleLoginService = async ({ tokenId }) => {
     };
     
     await redisClient.set(`refreshToken:${user._id}`, refreshToken, { ex: 7*24*60*60 });
-    // update last login
-    user.lastLoginAt = new Date();
-    await user.save();
-
-    await scheduleReminder(user._id); 
     return { user: safeUser, accessToken, refreshToken };
 };
 

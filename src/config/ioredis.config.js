@@ -6,7 +6,6 @@ export const redisConnection = () => {
     host: config.redisCloudHost,
     port: config.redisCloudPort,
     password: config.redisCloudPassword,
-    tls: {}, // Kích hoạt TLS
     enableReadyCheck: false,
     maxRetriesPerRequest: null, // Vô hạn retries
   })
