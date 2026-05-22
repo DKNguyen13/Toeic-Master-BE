@@ -212,98 +212,115 @@ export const submitBulkAnswers = async (sessionId, userId, answers) => {
     _id: sessionId,
     userId,
     status: { $in: ACTIVE_SESSION_STATUSES },
-  });
+  })
 
   if (!session) {
-    throw new Error("Không tìm thấy phiên làm bài");
+    throw new Error("Không tìm thấy phiên làm bài")
   }
 
-  const questionIds = answers.map((a) => a.questionId);
+  if (!Array.isArray(answers)) {
+    throw new Error("Danh sách câu trả lời không hợp lệ")
+  }
+
+  const questionIds = answers.map((a) => a.questionId).filter(Boolean)
 
   const questions = await Question.find({
     _id: { $in: questionIds },
-  });
+  })
 
-  const questionMap = {};
+  const questionMap = {}
   questions.forEach((q) => {
-    questionMap[q._id.toString()] = q;
-  });
+    questionMap[q._id.toString()] = q
+  })
 
-  let userAnswer = await UserAnswer.findOne({ sessionId, userId });
+  let userAnswer = await UserAnswer.findOne({ sessionId, userId })
 
   if (!userAnswer) {
     userAnswer = new UserAnswer({
       sessionId,
       userId,
       questions: [],
-    });
+    })
   }
 
-  // Map để tối ưu
-  const answerMap = new Map();
+  const answerMap = new Map()
   userAnswer.questions.forEach((q, idx) => {
-    answerMap.set(q.questionId.toString(), idx);
-  });
+    answerMap.set(q.questionId.toString(), idx)
+  })
 
   for (const answer of answers) {
-    const question = questionMap[answer.questionId.toString()];
-    if (!question) continue;
+    if (!answer.questionId) continue
 
-    const isSkipped = !answer.answer;
-    const isCorrect = answer.answer === question.correctAnswer;
+    const question = questionMap[answer.questionId.toString()]
+    if (!question) continue
 
-    const existingIndex = answerMap.get(answer.questionId.toString());
+    const selectedAnswer = answer.selectedAnswer ?? null
+
+    const isSkipped = selectedAnswer === null
+    const isCorrect = selectedAnswer === question.correctAnswer
+
+    const currentTimestamp = answer.timestamp
+      ? new Date(answer.timestamp)
+      : new Date()
+
+    const existingIndex = answerMap.get(answer.questionId.toString())
 
     const answerData = {
       questionId: answer.questionId,
       questionNumber: question.questionNumber,
       globalQuestionNumber: question.globalQuestionNumber,
       partNumber: question.partNumber,
-      selectedAnswer: answer.answer || null,
+      selectedAnswer,
       isCorrect,
-      timeSpent: 0,
+      timeSpent: answer.timeSpent || 0,
       isSkipped,
-      isFlagged: false,
-      timestamp: answer.timestamp,
-    };
+      isFlagged: answer.isFlagged || false,
+      timestamp: currentTimestamp,
+    }
 
     if (existingIndex !== undefined) {
-      const existing = userAnswer.questions[existingIndex];
+      const existing = userAnswer.questions[existingIndex]
 
-      // chống race condition
       if (
         existing.timestamp &&
-        answer.timestamp &&
-        existing.timestamp > answer.timestamp
+        currentTimestamp &&
+        new Date(existing.timestamp) > currentTimestamp
       ) {
-        continue;
+        continue
       }
 
       userAnswer.questions[existingIndex] = {
-        ...existing,
+        ...existing.toObject?.(),
         ...answerData,
-      };
+      }
     } else {
-      userAnswer.questions.push(answerData);
+      userAnswer.questions.push(answerData)
+      answerMap.set(
+        answer.questionId.toString(),
+        userAnswer.questions.length - 1,
+      )
     }
   }
 
-  await userAnswer.save();
+  await userAnswer.save()
 
   const answeredCount = userAnswer.questions.filter(
-    (q) => !q.isSkipped
-  ).length;
+    (q) => !q.isSkipped && q.selectedAnswer !== null,
+  ).length
 
-  const total = session.progress.totalQuestions || 1;
+  const total = session.progress.totalQuestions || 1
 
   await UserTestSession.findByIdAndUpdate(sessionId, {
     "progress.answeredCount": answeredCount,
-    "progress.completionPercentage": Math.round(
-      (answeredCount / total) * 100
-    ),
+    "progress.completionPercentage": Math.round((answeredCount / total) * 100),
     status: "in-progress",
-  });
-};
+  })
+
+  return {
+    success: true,
+    answeredCount,
+  }
+}
 
 export const submitTestSession = async (sessionId, userId) => {
   const session = await UserTestSession.findOne({
