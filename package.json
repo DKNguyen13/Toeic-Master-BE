@@ -4,8 +4,9 @@
   "version": "1.0.0",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "worker": "node src/workers/reminder.worker.js",
+    "server": "nodemon src/server.js",
+    "worker": "nodemon src/workers/reminder.worker.js",
+    "dev": "concurrently \"npm run server\" \"npm run worker\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "type": "module",
@@ -46,6 +47,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "nodemon": "^3.1.10"
   }
 }
