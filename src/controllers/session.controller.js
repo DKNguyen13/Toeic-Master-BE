@@ -21,9 +21,12 @@ export const startSession = async (req, res) => {
 export const getTestSession = async (req, res) => {
     try {
         const { sessionId } = req.params;
+        const { onlySession } = req.query;
         const userId = req.user.id;
 
-        const result = await sessionTestService.getTestSession(sessionId, userId);
+        const result = await sessionTestService.getTestSession(sessionId, userId, {
+            onlySession: onlySession === 'true'
+        });
 
         return success(res, 'Lấy thành công thông tin phiên thi', { result });
     } catch (err) {
@@ -61,7 +64,7 @@ export const submitSession = async (req, res) => {
     }
 };
 
-// [PUT] /api/session/:sessionId/pause
+// [POST] /api/session/:sessionId/pause
 export const pauseSession = async (req, res) => {
     try {
         const { sessionId } = req.params;

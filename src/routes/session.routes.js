@@ -21,7 +21,7 @@ router.get('/user/statistics', getUserStatistics);
 router.get('/:sessionId', getTestSession);
 router.post('/:sessionId/answers/bulk', submitBulkAnswers);
 router.post('/:sessionId/submit', submitSession);
-router.put('/:sessionId/pause', pauseSession);
+router.post('/:sessionId/pause', pauseSession);
 router.put('/:sessionId/resume', resumeSession);
 router.get('/:sessionId/results', getSessionResults);
 
