@@ -130,8 +130,8 @@ QUY TẮC BẮT BUỘC:
 
 CẤU TRÚC PHÂN TÍCH:
 1. ƯU ĐIỂM (chi tiết và cụ thể):
-+ Listening: ${summary.listeningScore}/495 (CEFR: ${listeningCEFR}) - độ chính xác khoảng ${listeningAccuracy}%
-+ Reading: ${summary.readingScore}/495 (CEFR: ${readingCEFR}) - độ chính xác khoảng ${readingAccuracy}%
++ Listening: ${summary.listeningScore}/495 (CEFR: ${listeningCEFR})
++ Reading: ${summary.readingScore}/495 (CEFR: ${readingCEFR})
 + Tổng điểm: ${totalScaled}/990 (CEFR tổng thể: ${overallCEFR})
 + Tổng câu đúng: ${totalCorrect}/${totalQuestions}
 
