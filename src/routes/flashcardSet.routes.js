@@ -12,6 +12,7 @@ router.use(trackActivityMiddleware); // use track activity middleware for routes
 
 router.post('/', FlashcardController.createSet);
 router.get('/', FlashcardController.getAllFlashcardSet);
+router.put('/:id', FlashcardController.updateSet);
 router.delete('/:id', FlashcardController.deleteSet);
 
 export default router;

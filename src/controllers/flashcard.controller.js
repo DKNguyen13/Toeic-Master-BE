@@ -75,6 +75,42 @@ export const createSet = async (req, res) => {
     }
 };
 
+// Update flashcard
+export const updateSet = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const { name, description } = req.body;
+
+    if (!name?.trim()) {
+      return error(res, "Tên bộ flashcard là bắt buộc!", 400);
+    }
+
+    const set = await FlashcardSet.findOne({
+      _id: id,
+      user: userId,
+    });
+
+    if (!set) {
+      return error(res, "Không tìm thấy bộ flashcard!", 404);
+    }
+
+    set.name = name.trim();
+    set.description = description?.trim() || "";
+
+    await set.save();
+
+    return success(
+      res,
+      "Cập nhật bộ flashcard thành công!",
+      set
+    );
+  } catch (err) {
+    console.error(err);
+    return error(res, "Lỗi khi cập nhật bộ flashcard!");
+  }
+};
+
 // Create flashcard
 export const createFlashcard = async (req, res) => {
     try {
