@@ -14,6 +14,7 @@ router.post('/', FlashcardController.createFlashcard);
 router.post('/import', FlashcardController.importFlashcardsJSON);
 router.post("/bulk", FlashcardController.createFlashcardsBulk);
 router.get('/', FlashcardController.getAllFlashcards);
+router.put("/:id", FlashcardController.updateFlashcard);
 router.delete('/:id', FlashcardController.deleteFlashcard);
 
 export default router;

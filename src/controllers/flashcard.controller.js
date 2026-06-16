@@ -75,7 +75,7 @@ export const createSet = async (req, res) => {
     }
 };
 
-// Update flashcard
+// Update flashcard set
 export const updateSet = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -147,6 +147,39 @@ export const createFlashcard = async (req, res) => {
         console.error(err);
         return error(res, 'Lỗi khi tạo flashcard.');
     }
+};
+
+// Update flashcard
+export const updateFlashcard = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const { word, meaning, example, note } = req.body;
+
+    const flashcard = await Flashcard.findOneAndUpdate(
+      {
+        _id: id,
+        user: userId,
+      },
+      {
+        word,
+        meaning,
+        example,
+        note,
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    if (!flashcard) return error(res, "Không tìm thấy flashcard!", 404);
+
+    return success(res, "Cập nhật flashcard thành công", flashcard);
+  } catch (err) {
+    console.error(err);
+    return error(res, "Lỗi khi cập nhật flashcard");
+  }
 };
 
 // Get all flashcards of current user
