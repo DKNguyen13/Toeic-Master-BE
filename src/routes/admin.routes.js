@@ -1,5 +1,5 @@
 import express from "express";
-import { authenticate } from "../middleware/authenticate.js";
+import { authenticate, isAdmin } from "../middleware/authenticate.js";
 import limitRequest from '../middleware/limitRequest.middleware.js';
 import * as adminController from "../controllers/admin.controller.js";
 import { uploadExcel } from "../middleware/uploadTest.middleware.js";
@@ -7,19 +7,19 @@ import * as testImportController from "../controllers/testImport.controller.js";
 
 const router = express.Router();
 
-router.get('/users', authenticate, adminController.getAllUsersController);
-router.get("/search-users", authenticate, adminController.searchUsers);
-router.get('/user-detail/:id', authenticate, adminController.getUserDetail);
-router.get('/dashboard', authenticate, adminController.getAdminDashboardStasts);
-router.get("/revenue-stats", authenticate, adminController.getRevenueStatsController);
-router.get("/users/export", authenticate, adminController.exportAllUsersController);
-router.patch('/activate', authenticate, adminController.changeActivateUserController);
+router.get('/users', authenticate, isAdmin, adminController.getAllUsersController);
+router.get("/search-users", authenticate, isAdmin, adminController.searchUsers);
+router.get('/user-detail/:id', authenticate, isAdmin, adminController.getUserDetail);
+router.get('/dashboard', authenticate, isAdmin, adminController.getAdminDashboardStasts);
+router.get("/revenue-stats", authenticate, isAdmin, adminController.getRevenueStatsController);
+router.get("/users/export", authenticate, isAdmin, adminController.exportAllUsersController);
+router.patch('/activate', authenticate, isAdmin, adminController.changeActivateUserController);
 
 router.post('/forgot-password', limitRequest, adminController.adminForgotPassword);
 router.post('/reset-password', adminController.adminResetPassword);
 
 // Test import routes
-router.post('/tests/import', authenticate, uploadExcel.single('file'), testImportController.importTestFromExcel);
+router.post('/tests/import', authenticate, isAdmin, uploadExcel.single('file'), testImportController.importTestFromExcel);
 router.get('/tests/import/template', authenticate, testImportController.downloadExcelTemplate);
 
 export default router;
