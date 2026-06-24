@@ -178,6 +178,14 @@ export const updatePart = async (req, res) => {
       return error(res, "Part not found")
     }
 
+    // Sanitize string "undefined" or "null" from multipart/form-data
+    if (instructions === "undefined" || instructions === "null") {
+      instructions = ""
+    }
+    if (description === "undefined" || description === "null") {
+      description = ""
+    }
+
     if(instructions !== undefined) {
         part.instructions = instructions
     }
@@ -203,10 +211,22 @@ export const updatePart = async (req, res) => {
       }
     }
 
+    const updateFields = {
+      ...audioUpdate,
+      totalQuestions
+    }
+
+    if (instructions !== undefined) {
+      updateFields.instructions = instructions
+    }
+    if (description !== undefined) {
+      updateFields.description = description
+    }
+
     // Nếu không có file → giữ nguyên audio, chỉ update fields khác
     const updatedPart = await Part.findOneAndUpdate(
       { _id: partId },
-      { ...audioUpdate, instructions, description, totalQuestions },
+      updateFields,
       { new: true, runValidators: true },
     )
 
@@ -216,7 +236,7 @@ export const updatePart = async (req, res) => {
 
     return success(res, "Update part success", { updatedPart }) // trả về doc mới
   } catch (err) {
-    return error(res, "Update part error", err.message);
+    return error(res, "Update part error", 500, err.message);
   }
 }
 // [DELETE] /api/test/:slug/parts/:partId
