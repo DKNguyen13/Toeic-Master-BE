@@ -69,8 +69,9 @@ export const pauseSession = async (req, res) => {
     try {
         const { sessionId } = req.params;
         const userId = req.user.id;
+        const { remainingTime } = req.body;
 
-        await sessionTestService.pauseTestSession(sessionId, userId);
+        await sessionTestService.pauseTestSession(sessionId, userId, remainingTime);
         return success(res, 'Pause phiên làm bài thành công');
     } catch (err) {
         return error(res, 'Lỗi xảy ra khi tạm dừng phiên làm bài', 500, err.message);

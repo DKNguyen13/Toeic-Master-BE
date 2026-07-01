@@ -82,7 +82,7 @@ export const getTestSession = async (sessionId, userId, queryOptions = {}) => {
     startedAt: session.startedAt,
     resumedAt: session.resumedAt,
     status: session.status,
-    previousTimeRemainingMinutes: session.progress.timeRemaining, // nếu PAUSED mới dùng
+    previousTimeRemainingSeconds: session.progress.timeRemaining, // nếu PAUSED mới dùng
     timeSpentSeconds: session.timeSpent,
   });
 
@@ -234,7 +234,7 @@ export const submitBulkAnswers = async (sessionId, userId, answers) => {
   const session = await UserTestSession.findOne({
     _id: sessionId,
     userId,
-    status: { $in: ACTIVE_SESSION_STATUSES },
+    status: { $in: [...ACTIVE_SESSION_STATUSES, SESSION_STATUS.TIMEOUT] },
   })
 
   if (!session) {
@@ -270,6 +270,8 @@ export const submitBulkAnswers = async (sessionId, userId, answers) => {
   userAnswer.questions.forEach((q, idx) => {
     answerMap.set(q.questionId.toString(), idx)
   })
+
+  const bulkOps = [];
 
   for (const answer of answers) {
     if (!answer.questionId) continue
@@ -312,20 +314,33 @@ export const submitBulkAnswers = async (sessionId, userId, answers) => {
         continue
       }
 
-      userAnswer.questions[existingIndex] = {
-        ...existing.toObject?.(),
-        ...answerData,
-      }
+      Object.assign(userAnswer.questions[existingIndex], answerData);
+      
+      bulkOps.push({
+        updateOne: {
+          filter: { sessionId, userId, "questions.questionId": answer.questionId },
+          update: { $set: { "questions.$": answerData } }
+        }
+      });
     } else {
       userAnswer.questions.push(answerData)
       answerMap.set(
         answer.questionId.toString(),
         userAnswer.questions.length - 1,
       )
+      
+      bulkOps.push({
+        updateOne: {
+          filter: { sessionId, userId },
+          update: { $push: { questions: answerData } }
+        }
+      });
     }
   }
 
-  await userAnswer.save()
+  if (bulkOps.length > 0) {
+    await UserAnswer.bulkWrite(bulkOps);
+  }
 
   const answeredCount = userAnswer.questions.filter(
     (q) => !q.isSkipped && q.selectedAnswer !== null,
@@ -349,7 +364,7 @@ export const submitTestSession = async (sessionId, userId) => {
   const session = await UserTestSession.findOne({
     _id: sessionId,
     userId,
-    status: { $in: ACTIVE_SESSION_STATUSES },
+    status: { $in: [...ACTIVE_SESSION_STATUSES, SESSION_STATUS.TIMEOUT] },
   });
 
   if (!session) {
@@ -393,6 +408,7 @@ export const submitTestSession = async (sessionId, userId) => {
       });
     }
   }
+  // userAnswer.markModified('questions');
   await userAnswer.save();
 
   const results = await calculateSessionResults(sessionId, userId);
@@ -488,7 +504,7 @@ export const getTestSessionResult = async (sessionId, userId) => {
 };
 
 // Pause session
-export const pauseTestSession = async (sessionId, userId) => {
+export const pauseTestSession = async (sessionId, userId, remainingTimeFromClient) => {
   const session = await UserTestSession.findOne({
     _id: sessionId,
     userId,
@@ -542,7 +558,15 @@ export const pauseTestSession = async (sessionId, userId) => {
 
   if (timeLimit > 0) {
     const timeLimitSeconds = timeLimit * 60;
-    const timeRemaining = Math.max(0, timeLimitSeconds - session.timeSpent);
+    
+    let timeRemaining;
+    if (remainingTimeFromClient !== undefined && remainingTimeFromClient !== null) {
+      timeRemaining = Math.max(0, parseInt(remainingTimeFromClient, 10));
+      // Adjust timeSpent based on client remaining time to ensure consistency
+      session.timeSpent = Math.max(0, timeLimitSeconds - timeRemaining);
+    } else {
+      timeRemaining = Math.max(0, timeLimitSeconds - session.timeSpent);
+    }
 
     session.progress.timeRemaining = timeRemaining;
 
@@ -689,7 +713,7 @@ const calculateTimeRemaining = ({
   startedAt,
   resumedAt = null,
   status,
-  previousTimeRemainingMinutes = 0,
+  previousTimeRemainingSeconds = 0,
   timeSpentSeconds = 0,
 }) => {
   // Không giới hạn thời gian
@@ -697,9 +721,9 @@ const calculateTimeRemaining = ({
     return null;
   }
 
-  // Nếu đang PAUSED → lấy giá trị đã lưu (phút → giây)
+  // Nếu đang PAUSED → lấy giá trị đã lưu (giây)
   if (status === SESSION_STATUS.PAUSED) {
-    return Math.max(0, previousTimeRemainingMinutes * 60);
+    return Math.max(0, previousTimeRemainingSeconds);
   }
 
   // Tính cho session đang active
