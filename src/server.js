@@ -25,6 +25,8 @@ import fillBlankQuestionRouter from './routes/fillBlankQuestion.routes.js';
 // Services
 import * as InitData from './services/initData.service.js';
 import NotificationService from "./services/notification.service.js";
+import { initReminderScheduler } from './services/reminder.service.js';
+import { initSessionCleanupScheduler } from './services/sessionCleanup.service.js';
 
 // socket
 import { Server } from "socket.io";
@@ -110,6 +112,11 @@ cron.schedule('0 0 * * *', async () => {
         console.error('Error while sending VIP expiry notifications:', error);
     }
 });
+
+initReminderScheduler();
+
+// Cron job dọn dẹp các phiên làm bài hết hạn mỗi ngày lúc 01:00
+initSessionCleanupScheduler();
 
 
 export default app;

@@ -1,15 +1,36 @@
-import { MailerSend, EmailParams, Sender, Recipient } from "mailersend";
+import { Resend } from 'resend';
 import { config } from '../config/env.config.js';
 
-const mailersend = new MailerSend({
-  apiKey: config.mailersendApiKey,
-});
+const resend = new Resend(config.resendApiKey);
 
-const fromSender = new Sender(`${config.mailersendFromEmail}`, `${config.mailersendFromName}`);
+const FROM = `${config.mailFromName} <${config.mailFromEmail}>`;
+
+// ====================== Common function send email ======================
+const sendEmail = async ({ to, subject, html, replyTo = null }) => {
+  try {
+    const { data, error } = await resend.emails.send({
+      from: FROM,
+      to,
+      subject,
+      html,
+      ...(replyTo && { reply_to: replyTo }),
+    });
+
+    if (error) throw new Error(error.message);
+
+    console.log(`Email sent successfully to ${to} | Subject: ${subject} | ID: ${data.id}`);
+    return data;
+  } catch (error) {
+    console.error('Resend Error:', error.message);
+    throw new Error('Gửi email thất bại');
+  }
+};
+
+// ====================== Other function send email ======================
 
 // Send OTP email
 export const sendOTPEmail = async (to, otp) => {
-  const htmlContent = `
+  const html = `
   <!DOCTYPE html>
   <html>
   <head>
@@ -34,9 +55,7 @@ export const sendOTPEmail = async (to, otp) => {
   </head>
   <body>
     <div class="container">
-      <div class="header">
-        <h1>Toeic Master</h1>
-      </div>
+      <div class="header"><h1>Toeic Master</h1></div>
       <div class="content">
         <h2 style="color: #2a4d9b; font-size: 26px; font-weight: 600; margin-bottom: 20px;">Xác Thực OTP</h2>
         <p style="font-size: 16px;">Chào bạn,</p>
@@ -51,29 +70,14 @@ export const sendOTPEmail = async (to, otp) => {
       </div>
     </div>
   </body>
-  </html>
-  `;
+  </html>`;
 
-  const recipients = [new Recipient(to)];
-
-  const emailParams = new EmailParams()
-    .setFrom(fromSender)
-    .setTo(recipients)
-    .setSubject("Xác Thực OTP Tài Khoản - Toeic Master")
-    .setHtml(htmlContent);
-
-  try {
-    const response = await mailersend.email.send(emailParams);
-    console.log(`OTP sent successfully to ${to}`, response);
-  } catch (error) {
-    console.error('Error sending OTP email:', error);
-    throw new Error('Gửi OTP thất bại');
-  }
+  await sendEmail({ to, subject: "Xác Thực OTP Tài Khoản - Toeic Master", html });
 };
 
 // Send reset password email
 export const sendResetPasswordEmail = async (to, newPassword) => {
-  const htmlContent = `
+  const html = `
   <!DOCTYPE html>
   <html>
   <head>
@@ -99,9 +103,7 @@ export const sendResetPasswordEmail = async (to, newPassword) => {
   </head>
   <body>
     <div class="container">
-      <div class="header">
-        <h1>Toeic Master</h1>
-      </div>
+      <div class="header"><h1>Toeic Master</h1></div>
       <div class="content">
         <h2 style="color: #2a4d9b; font-size: 26px; font-weight: 600; margin-bottom: 20px;">Mật Khẩu Mới</h2>
         <p style="font-size: 16px;">Chào bạn,</p>
@@ -117,29 +119,14 @@ export const sendResetPasswordEmail = async (to, newPassword) => {
       </div>
     </div>
   </body>
-  </html>
-  `;
+  </html>`;
 
-  const recipients = [new Recipient(to)];
-
-  const emailParams = new EmailParams()
-    .setFrom(fromSender)
-    .setTo(recipients)
-    .setSubject("Đặt Lại Mật Khẩu - Toeic Master")
-    .setHtml(htmlContent);
-
-  try {
-    await mailersend.email.send(emailParams);
-    console.log(`Reset password sent to ${to}`);
-  } catch (error) {
-    console.error('Error sending reset password email:', error);
-    throw new Error('Gửi mật khẩu mới thất bại');
-  }
+  await sendEmail({ to, subject: "Đặt Lại Mật Khẩu - Toeic Master", html });
 };
 
 // Send support email
 export const sendSupportEmail = async (fromUserEmail, userName, issueTitle, issueContent) => {
-  const htmlContent = `
+  const html = `
   <!DOCTYPE html>
   <html>
   <head>
@@ -156,19 +143,11 @@ export const sendSupportEmail = async (fromUserEmail, userName, issueTitle, issu
       .info-box { background:#edf2ff; padding:20px; border-radius:12px; margin:15px 0; border:1px solid #d1dcff; box-shadow:0 2px 6px rgba(0,0,0,0.05); }
       .info-box p { margin:8px 0; }
       .footer { background:#f8fafc; padding:25px; text-align:center; font-size:13px; color:#6b7280; border-top:1px solid #e5e7eb; }
-      @media (max-width:600px) {
-        .container { margin:20px; }
-        .content { padding:25px; }
-        .header h1 { font-size:26px; }
-        .section-title { font-size:20px; }
-      }
     </style>
   </head>
   <body>
     <div class="container">
-      <div class="header">
-        <h1>Toeic Master</h1>
-      </div>
+      <div class="header"><h1>Toeic Master</h1></div>
       <div class="content">
         <h2 class="section-title">Yêu Cầu Hỗ Trợ Mới</h2>
         <div class="info-box">
@@ -186,42 +165,76 @@ export const sendSupportEmail = async (fromUserEmail, userName, issueTitle, issu
       </div>
     </div>
   </body>
-  </html>
-  `;
+  </html>`;
 
-  const recipients = [new Recipient(`${config.adminEmail}`)];
-
-  const emailParams = new EmailParams()
-    .setFrom(fromSender)
-    .setTo(recipients)
-    .setReplyTo(new Recipient(fromUserEmail))
-    .setSubject(`[Hỗ Trợ] ${issueTitle} - từ ${userName}`)
-    .setHtml(htmlContent);
-
-  try {
-    await mailersend.email.send(emailParams);
-    console.log(`Support email sent from ${fromUserEmail}`);
-  } catch (error) {
-    console.error('Error sending support email:', error);
-    throw new Error('Gửi yêu cầu hỗ trợ thất bại');
-  }
+  await sendEmail({
+    to: config.adminEmail,
+    subject: `[Hỗ Trợ] ${issueTitle} - từ ${userName}`,
+    html,
+    replyTo: fromUserEmail,
+  });
 };
 
+// Send reset password link for admin
 export const sendResetPasswordLinkEmail = async (to, resetToken) => {
   const resetLink = `${config.adminUrl}/reset-password?token=${resetToken}`;
 
-  const htmlContent = `
-    <h2>Đặt lại mật khẩu Admin</h2>
-    <p>Bạn đã yêu cầu đặt lại mật khẩu.</p>
-    <a href="${resetLink}">Nhấn vào đây để đặt lại mật khẩu</a>
-    <p>Link có hiệu lực trong 15 phút.</p>
-  `;
-  const recipients = [new Recipient(`${config.supportEmail}`)];
-  const emailParams = new EmailParams()
-    .setFrom(fromSender)
-    .setTo(recipients)
-    .setSubject("Reset mật khẩu Admin")
-    .setHtml(htmlContent);
+  const html = `
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="UTF-8">
+    <style>
+      body { font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 0; }
+      .container { max-width: 480px; margin: 40px auto; background: #fff; border-radius: 12px; padding: 40px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+      .button { display: inline-block; margin: 20px 0; background: #2a4d9b; color: #fff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-size: 16px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2 style="color: #2a4d9b;">Đặt lại mật khẩu Admin</h2>
+      <p>Bạn đã yêu cầu đặt lại mật khẩu. Nhấn nút bên dưới để tiếp tục:</p>
+      <a href="${resetLink}" class="button">Đặt lại mật khẩu</a>
+      <p style="color: #666; font-size: 14px;">Link có hiệu lực trong <strong>15 phút</strong>. Nếu bạn không yêu cầu, hãy bỏ qua email này.</p>
+    </div>
+  </body>
+  </html>`;
 
-  await mailersend.email.send(emailParams);
+  await sendEmail({
+    to: config.supportEmail || to,
+    subject: "Reset mật khẩu Admin - Toeic Master",
+    html,
+  });
 };
+
+// Send reminder email after 7 days of inactivity
+export const sendReminderEmail = async (to, fullname) => {
+  const html = `
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="UTF-8">
+    <style>
+      body { font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 0; }
+      .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 12px; padding: 40px; }
+      .button { display: inline-block; margin: 20px 0; background: #2a4d9b; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2 style="color: #3498db;">Bạn đã bỏ lỡ việc học TOEIC 📚</h2>
+      <p>Chào ${fullname || "bạn"},</p>
+      <p>Đã 7 ngày bạn chưa quay lại học TOEIC. Hãy tiếp tục luyện tập để không bị mất kiến thức nhé!</p>
+      <a href="${config.frontendUrl}" class="button" style="color: #fff;">Học ngay!</a>
+      <p style="color: #666; font-size: 14px;">Nếu bạn đã quay lại, hãy bỏ qua email này.</p>
+    </div>
+  </body>
+  </html>
+  `
+
+  await sendEmail({
+    to,
+    subject: "📚 Nhắc nhở học TOEIC - Toeic Master",
+    html,
+  })
+}

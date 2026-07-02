@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { SESSION_STATUS, SESSION_TYPE } from "../constants/sessionTest.constants.js";
+import { SEVEN_DAYS_IN_MS } from '../utils/constant.js';
 
 const userTestSessionSchema = new mongoose.Schema({
     sessionCode: {
@@ -116,8 +117,7 @@ userTestSessionSchema.pre('validate', function (next) {
         this.sessionCode = `S-${date}-${random}`;
 
         // Set expiration time 7 days
-        const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-        this.expiredAt = new Date(this.startedAt.getTime() + SEVEN_DAYS_MS);
+        this.expiredAt = new Date(this.startedAt.getTime() + SEVEN_DAYS_IN_MS);
     }
     next();
 });

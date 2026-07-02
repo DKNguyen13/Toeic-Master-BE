@@ -19,6 +19,7 @@ const partSchema = new mongoose.Schema({
   description: { type: String },
   instructions: { type: String },
   audioFile: { type: String }, // url audio
+  key: { type: String, unique: true },
   totalQuestions: { type: Number, required: true },
   config: {
     hasAudio: { type: Boolean, default: false },

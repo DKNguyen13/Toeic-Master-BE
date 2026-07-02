@@ -7,16 +7,17 @@ import * as AuthService from '../services/auth.service.js';
 import Notification from "../models/notification.model.js";
 import { authenticate } from '../middleware/authenticate.js';
 import { verifyRefreshToken, generateAccessToken } from '../utils/jwt.js';
+import { SEVEN_DAYS_IN_MS } from '../utils/constant.js';
 
 // Admin Login
 export const adminLogin = async (req, res) => {
     try {
         const { user, accessToken, refreshToken } = await AuthService.adminLoginService(req.body);
         res.cookie('refreshTokenAdmin', refreshToken, {
-            httpOnly: true,
-            secure: config.cookieSecure,
-            sameSite: config.cookieSameSite,
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+          httpOnly: true,
+          secure: config.cookieSecure,
+          sameSite: config.cookieSameSite,
+          maxAge: SEVEN_DAYS_IN_MS, // 7 days
         });
 
         return success(res, 'Đăng nhập thành công', { 
@@ -37,7 +38,7 @@ export const login = async (req, res) => {
             httpOnly: true,
             secure: config.cookieSecure,
             sameSite: config.cookieSameSite,
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            maxAge: SEVEN_DAYS_IN_MS, // 7 days
         });
 
         return success(res, 'Đăng nhập thành công', { 
@@ -63,7 +64,7 @@ export const googleLogin = async (req, res) => {
             httpOnly: true,
             secure: config.cookieSecure,
             sameSite: config.cookieSameSite,
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
+            maxAge: SEVEN_DAYS_IN_MS, // 7 days
         });
         
         return success(res, 'Đăng nhập google thành công', { 
@@ -258,6 +259,38 @@ export const checkPremiumAccess = [authenticate, async (req, res) => {
     } catch (err) {
         console.error("Check Premium access error:", err.message);
         return error(res, "Lỗi kiểm tra Premium", 500);
+    }
+}];
+
+export const getMe = [authenticate, async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        const user = await userModel.findById(userId).select("name email vip");
+
+        if (!user) return error(res, "Người dùng không tồn tại", 404);
+
+        const now = new Date();
+
+        let tier = "free";
+
+        if (user.vip?.isActive && user.vip?.endDate && user.vip.endDate > now) {
+            tier = user.vip.type;
+        }
+
+        return success(res, "Lấy thông tin user thành công", {
+        user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+        },
+        tier,
+        vip: user.vip || null,
+        });
+
+    } catch (err) {
+        console.error("Get me error:", err.message);
+        return error(res, "Lỗi server", 500);
     }
 }];
 

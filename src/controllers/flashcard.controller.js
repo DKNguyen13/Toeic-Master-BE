@@ -3,6 +3,51 @@ import Flashcard from '../models/flashcard.model.js';
 import { success, error } from '../utils/response.js';
 import FlashcardSet from '../models/flashcardSet.model.js';
 
+// Limit
+export const getSetLimit = (user) => {
+  if (user.role === "admin") return Infinity;
+
+  let limit = 1;
+
+  if (user.vip?.isActive) {
+    switch (user.vip.type) {
+      case "basic": return 3;
+      case "advanced": return 5;
+      case "premium": return 10;
+    }
+  }
+
+  return limit;
+};
+
+export const getFlashcardLimit = (user) => {
+  if (user.role === "admin") return Infinity;
+
+  let limit = 5;
+
+  if (user.vip?.isActive) {
+    switch (user.vip.type) {
+      case "basic": return 30;
+      case "advanced": return 50;
+      case "premium": return 70;
+    }
+  }
+
+  return limit;
+};
+
+export const checkLimit = ({ count, limit, type, user }) => {
+  if (limit === Infinity) return null;
+
+  if (count >= limit) {
+    const isMaxVip = user.vip?.isActive && user.vip.type === "premium";
+    if (isMaxVip) return `Bạn đã đạt giới hạn ${limit} ${type} của gói Premium.`;
+    return `Bạn đã đạt giới hạn ${limit} ${type}. Nâng cấp VIP để tạo thêm!`;
+  }
+
+  return null;
+};
+
 // Create flashcard set
 export const createSet = async (req, res) => {
     try {
@@ -12,26 +57,11 @@ export const createSet = async (req, res) => {
         if (!name) return error(res, 'Tên set là bắt buộc!', 400);
         const user = await User.findById(userId);
         
-        let limit = 1;
+        const limit = getSetLimit(user);
+        const count = await FlashcardSet.countDocuments({ user: userId });
+        const limitError = checkLimit({count, limit, type: "bộ flashcard", user});
 
-        if(user.role !== 'admin'){
-            if (user.vip.isActive) {
-                switch (user.vip.type) {
-                    case 'basic': limit = 2; break;
-                    case 'advanced': limit = 5; break;
-                    case 'premium': limit = 10; break;
-                }
-            }
-            const count = await FlashcardSet.countDocuments({ user: userId });
-            if (count >= limit && limit > 0) {
-                if (limit < 10) {
-                    return error(res, `Bạn đã đạt giới hạn ${limit} bộ flashcard. Nâng cấp VIP để tạo thêm!`, 403);
-                } else {
-                    return error(res, `Bạn đã đạt giới hạn ${limit} bộ flashcard.`, 403);
-                }
-            }
-        }
-      
+        if (limitError) return error(res, limitError, 403);
         const newSet = await FlashcardSet.create({
             user: userId,
             name,
@@ -43,6 +73,42 @@ export const createSet = async (req, res) => {
         console.error(err);
         return error(res, 'Lỗi khi tạo set');
     }
+};
+
+// Update flashcard set
+export const updateSet = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const { name, description } = req.body;
+
+    if (!name?.trim()) {
+      return error(res, "Tên bộ flashcard là bắt buộc!", 400);
+    }
+
+    const set = await FlashcardSet.findOne({
+      _id: id,
+      user: userId,
+    });
+
+    if (!set) {
+      return error(res, "Không tìm thấy bộ flashcard!", 404);
+    }
+
+    set.name = name.trim();
+    set.description = description?.trim() || "";
+
+    await set.save();
+
+    return success(
+      res,
+      "Cập nhật bộ flashcard thành công!",
+      set
+    );
+  } catch (err) {
+    console.error(err);
+    return error(res, "Lỗi khi cập nhật bộ flashcard!");
+  }
 };
 
 // Create flashcard
@@ -60,23 +126,10 @@ export const createFlashcard = async (req, res) => {
         if (!set) return error(res, 'Set không tồn tại hoặc không thuộc bạn!', 404);
         
         const count = await Flashcard.countDocuments({ user: userId });
+        let limit = getFlashcardLimit(user);
+        const limitError = checkLimit({count, limit, type: "flashcard", user});
 
-        let limit = 5;
-        if(user.role !== 'admin'){
-            if (user.vip.isActive) {
-                switch (user.vip.type) {
-                    case 'basic': limit = 50; break;
-                    case 'advanced': limit = 60; break;
-                    case 'premium': limit = 100; break;
-                }
-            }
-            if (count >= limit) {
-                const msg = limit < 100 
-                        ? `Bạn đã đạt giới hạn tạo ${limit} flashcard. Nâng cấp VIP để tạo thêm!` 
-                        : `Bạn đã đạt giới hạn tạo ${limit} flashcard.`;
-                    return error(res, msg, 403);
-            }        
-        }
+        if (limitError) return error(res, limitError, 403);
 
         const flashcard = await Flashcard.create({
             user: userId,
@@ -94,6 +147,39 @@ export const createFlashcard = async (req, res) => {
         console.error(err);
         return error(res, 'Lỗi khi tạo flashcard.');
     }
+};
+
+// Update flashcard
+export const updateFlashcard = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const { word, meaning, example, note } = req.body;
+
+    const flashcard = await Flashcard.findOneAndUpdate(
+      {
+        _id: id,
+        user: userId,
+      },
+      {
+        word,
+        meaning,
+        example,
+        note,
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    if (!flashcard) return error(res, "Không tìm thấy flashcard!", 404);
+
+    return success(res, "Cập nhật flashcard thành công", flashcard);
+  } catch (err) {
+    console.error(err);
+    return error(res, "Lỗi khi cập nhật flashcard");
+  }
 };
 
 // Get all flashcards of current user
@@ -226,5 +312,61 @@ export const importFlashcardsJSON = async (req, res) => {
   } catch (err) {
     console.error(err);
     return error(res, 'Import flashcard lỗi!');
+  }
+};
+
+// Bulk create flashcards (user)
+export const createFlashcardsBulk = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { setId, flashcards } = req.body;
+
+    if (!setId || !Array.isArray(flashcards)) return error(res, "Dữ liệu không hợp lệ", 400);
+
+    const user = await User.findById(userId);
+
+    const set = await FlashcardSet.findOne({ _id: setId, user: userId });
+    if (!set) return error(res, "Set không tồn tại!", 404);
+
+    const validCards = flashcards.filter(f => f.word && f.meaning);
+
+    if (validCards.length === 0) return error(res, "Không có flashcard hợp lệ!", 400);
+
+    const count = await Flashcard.countDocuments({ user: userId });
+    const limit = getFlashcardLimit(user);
+
+    const remaining = limit - count;
+    const isMaxVip = user.vip?.isActive && user.vip.type === "premium";
+
+    if (limit !== Infinity && remaining <= 0) {
+      return error(res,
+        isMaxVip
+          ? `Bạn đã đạt giới hạn ${limit} flashcard của gói Premium.`
+          : `Bạn đã đạt giới hạn ${limit} flashcard. Nâng cấp VIP để tạo thêm!`, 403);
+    }
+
+    if (limit !== Infinity && validCards.length > remaining)
+      return error(res, `Bạn chỉ có thể tạo tối đa ${remaining} flashcard nữa.`, 403);
+
+    const docs = validCards.map(f => ({
+      user: userId,
+      set: setId,
+      word: f.word,
+      meaning: f.meaning,
+      example: f.example || "",
+      note: f.note || ""
+    }));
+
+    await Flashcard.insertMany(docs);
+
+    await FlashcardSet.findByIdAndUpdate(setId, {
+      $inc: { count: docs.length }
+    });
+
+    return success(res, `Đã tạo ${docs.length} flashcards`, docs, 201);
+
+  } catch (err) {
+    console.error(err);
+    return error(res, "Lỗi khi tạo hàng loạt flashcard");
   }
 };

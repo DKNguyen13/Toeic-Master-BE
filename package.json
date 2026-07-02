@@ -4,7 +4,9 @@
   "version": "1.0.0",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
+    "server": "nodemon src/server.js",
+    "worker": "nodemon src/workers/reminder.worker.js",
+    "dev": "concurrently \"npm run server\" \"npm run worker\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "type": "module",
@@ -12,9 +14,11 @@
   "author": "Dương Khánh Nguyên - Nguyễn Nhật Nguyên",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1004.0",
     "@upstash/redis": "^1.35.8",
     "axios": "^1.11.0",
     "bcryptjs": "^3.0.2",
+    "bull": "^4.16.5",
     "cloudinary": "^2.7.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -24,6 +28,7 @@
     "fuse.js": "^7.1.0",
     "google-auth-library": "^10.3.0",
     "groq-sdk": "^0.37.0",
+    "ioredis": "^5.10.1",
     "jsonwebtoken": "^9.0.2",
     "mailersend": "^2.6.0",
     "mammoth": "^1.11.0",
@@ -35,11 +40,14 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.6",
     "redis": "^5.8.2",
+    "resend": "^6.9.4",
     "socket.io": "^4.8.1",
     "streamifier": "^0.1.1",
+    "uuid": "^13.0.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "nodemon": "^3.1.10"
   }
 }

@@ -1,15 +1,20 @@
 import express from 'express';
 import { authenticate } from '../middleware/authenticate.js';
+import { trackActivityMiddleware } from '../middleware/trackActivity.middleware.js';
 import * as FlashcardController from '../controllers/flashcard.controller.js';
 
 const router = express.Router();
 
-router.post('/', authenticate, FlashcardController.createFlashcard);
-router.post('/import', authenticate, FlashcardController.importFlashcardsJSON);
-
-router.get('/', authenticate, FlashcardController.getAllFlashcards);
 router.get('/free', FlashcardController.getAllFlashcardsFree);
 
-router.delete('/:id', authenticate, FlashcardController.deleteFlashcard);
+router.use(authenticate); // use authenticate for routes below
+router.use(trackActivityMiddleware); // use track activity middleware for routes below
+
+router.post('/', FlashcardController.createFlashcard);
+router.post('/import', FlashcardController.importFlashcardsJSON);
+router.post("/bulk", FlashcardController.createFlashcardsBulk);
+router.get('/', FlashcardController.getAllFlashcards);
+router.put("/:id", FlashcardController.updateFlashcard);
+router.delete('/:id', FlashcardController.deleteFlashcard);
 
 export default router;

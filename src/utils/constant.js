@@ -70,3 +70,5 @@ Politely redirect with responses like:
 Remember: Stay focused on your expertise - English language education and TOEIC preparation!
 
 So, this is a question for your: `;
+
+export const SEVEN_DAYS_IN_MS = 7 * 24 * 60 * 60 * 1000 // 7 ngày in milliseconds

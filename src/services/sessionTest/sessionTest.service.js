@@ -1,6 +1,7 @@
 import UserTestSession from "../../models/userTestSession.model.js";
 import User from "../../models/user.model.js";
 import Test from "../../models/test.model.js";
+import Part from "../../models/part.model.js";
 import Question from "../../models/question.model.js";
 import UserAnswer from "../../models/userAnswer.model.js";
 import { calculateSessionResults } from "../score.service.js";
@@ -73,8 +74,52 @@ export const startTestSession = async (
   return session._id;
 };
 
-export const getTestSession = async (sessionId, userId) => {
+export const getTestSession = async (sessionId, userId, queryOptions = {}) => {
   const session = await getSessionInfo(sessionId, userId);
+
+  const timeRemaining = calculateTimeRemaining({
+    timeLimitMinutes: session.testConfig.timeLimit,
+    startedAt: session.startedAt,
+    resumedAt: session.resumedAt,
+    status: session.status,
+    previousTimeRemainingSeconds: session.progress.timeRemaining, // nếu PAUSED mới dùng
+    timeSpentSeconds: session.timeSpent,
+  });
+
+  const sortedSelectedParts = [...session.testConfig.selectedParts].sort(
+    (a, b) => a - b
+  );
+
+  if (queryOptions.onlySession) {
+    const sessionResponse = {
+      id: session._id,
+      sessionCode: session.sessionCode,
+      sessionType: session.sessionType,
+      testConfig: {
+        selectedParts: sortedSelectedParts,
+        timeLimit: session.testConfig.timeLimit,
+      },
+      audio: session.testId.audio,
+      title: session.testId.title,
+      progress: session.progress,
+      timeRemaining: timeRemaining,
+      status: session.status,
+    };
+
+    return {
+      session: sessionResponse,
+    };
+  }
+
+  const parts = await Part.find({
+    testId: session.testId,
+    partNumber: { $in: session.testConfig.selectedParts },
+  }).select("partNumber audioFile")
+    .sort({ partNumber: 1 });
+  const partAudioMap = {};
+  parts.forEach(part => {
+    partAudioMap[part.partNumber] = part.audioFile;
+  });
 
   console.log("=== SESSION INFO ===");
   console.log("sessionId:", session._id.toString());
@@ -161,18 +206,7 @@ export const getTestSession = async (sessionId, userId) => {
     userAnswer: answerMap[q._id.toString()] || null,
   }));
 
-  const timeRemaining = calculateTimeRemaining({
-    timeLimitMinutes: session.testConfig.timeLimit,
-    startedAt: session.startedAt,
-    resumedAt: session.resumedAt,
-    status: session.status,
-    previousTimeRemainingMinutes: session.progress.timeRemaining, // nếu PAUSED mới dùng
-    timeSpentSeconds: session.timeSpent,
-  });
 
-  const sortedSelectedParts = [...session.testConfig.selectedParts].sort(
-    (a, b) => a - b
-  );
   // Chọn những field cần thiết cho FE
   const sessionResponse = {
     id: session._id,
@@ -187,7 +221,8 @@ export const getTestSession = async (sessionId, userId) => {
     progress: session.progress,
     timeRemaining: timeRemaining,
     status: session.status,
-  };
+    partsAudio: partAudioMap
+  }
 
   return {
     session: sessionResponse,
@@ -199,95 +234,137 @@ export const submitBulkAnswers = async (sessionId, userId, answers) => {
   const session = await UserTestSession.findOne({
     _id: sessionId,
     userId,
-    status: { $in: ACTIVE_SESSION_STATUSES },
-  });
+    status: { $in: [...ACTIVE_SESSION_STATUSES, SESSION_STATUS.TIMEOUT] },
+  })
 
   if (!session) {
-    throw new Error("Không tìm thấy phiên làm bài");
+    throw new Error("Không tìm thấy phiên làm bài")
   }
 
-  const questionIds = answers.map((a) => a.questionId);
+  if (!Array.isArray(answers)) {
+    throw new Error("Danh sách câu trả lời không hợp lệ")
+  }
+
+  const questionIds = answers.map((a) => a.questionId).filter(Boolean)
+
   const questions = await Question.find({
     _id: { $in: questionIds },
-  });
+  })
 
-  const questionMap = {};
+  const questionMap = {}
   questions.forEach((q) => {
-    questionMap[q._id.toString()] = q;
-  });
+    questionMap[q._id.toString()] = q
+  })
 
-  // Get UserAnswer document
-  const userAnswer = await UserAnswer.findOne({
-    sessionId,
-    userId,
-  });
+  let userAnswer = await UserAnswer.findOne({ sessionId, userId })
 
-  // Process all answers
-  const processedAnswers = [];
+  if (!userAnswer) {
+    userAnswer = new UserAnswer({
+      sessionId,
+      userId,
+      questions: [],
+    })
+  }
+
+  const answerMap = new Map()
+  userAnswer.questions.forEach((q, idx) => {
+    answerMap.set(q.questionId.toString(), idx)
+  })
+
+  const bulkOps = [];
 
   for (const answer of answers) {
-    const question = questionMap[answer.questionId];
-    if (!question) continue;
+    if (!answer.questionId) continue
 
-    const isCorrect = answer.selectedAnswer === question.correctAnswer;
-    const isSkipped =
-      answer.selectedAnswer === null || answer.selectedAnswer === undefined;
+    const question = questionMap[answer.questionId.toString()]
+    if (!question) continue
 
-    const existingAnswerIndex = userAnswer.questions.findIndex(
-      (q) => q.questionId.toString() === answer.questionId
-    );
+    const selectedAnswer = answer.selectedAnswer ?? answer.answer ?? null
+
+    const isSkipped = selectedAnswer === null
+    const isCorrect = selectedAnswer === question.correctAnswer
+
+    const currentTimestamp = answer.timestamp
+      ? new Date(answer.timestamp)
+      : new Date()
+
+    const existingIndex = answerMap.get(answer.questionId.toString())
 
     const answerData = {
       questionId: answer.questionId,
-      questionNumber: question.questionNumber, // per-part index
-      globalQuestionNumber: question.globalQuestionNumber, // global index (important)
+      questionNumber: question.questionNumber,
+      globalQuestionNumber: question.globalQuestionNumber,
       partNumber: question.partNumber,
-      selectedAnswer: answer.selectedAnswer || null,
+      selectedAnswer,
       isCorrect,
       timeSpent: answer.timeSpent || 0,
       isSkipped,
       isFlagged: answer.isFlagged || false,
-    };
-
-    if (existingAnswerIndex !== -1) {
-      // Update existing answer
-      userAnswer.questions[existingAnswerIndex] = {
-        ...userAnswer.questions[existingAnswerIndex],
-        ...answerData,
-        timeSpent:
-          (userAnswer.questions[existingAnswerIndex].timeSpent || 0) +
-          (answer.timeSpent || 0),
-      };
-    } else {
-      // Add new answer
-      userAnswer.questions.push(answerData);
+      timestamp: currentTimestamp,
     }
 
-    processedAnswers.push({
-      questionId: answer.questionId,
-      isCorrect,
-      isSkipped,
-    });
+    if (existingIndex !== undefined) {
+      const existing = userAnswer.questions[existingIndex]
+
+      if (
+        existing.timestamp &&
+        currentTimestamp &&
+        new Date(existing.timestamp) > currentTimestamp
+      ) {
+        continue
+      }
+
+      Object.assign(userAnswer.questions[existingIndex], answerData);
+      
+      bulkOps.push({
+        updateOne: {
+          filter: { sessionId, userId, "questions.questionId": answer.questionId },
+          update: { $set: { "questions.$": answerData } }
+        }
+      });
+    } else {
+      userAnswer.questions.push(answerData)
+      answerMap.set(
+        answer.questionId.toString(),
+        userAnswer.questions.length - 1,
+      )
+      
+      bulkOps.push({
+        updateOne: {
+          filter: { sessionId, userId },
+          update: { $push: { questions: answerData } }
+        }
+      });
+    }
   }
 
-  await userAnswer.save();
+  if (bulkOps.length > 0) {
+    await UserAnswer.bulkWrite(bulkOps);
+  }
 
-  // Update session progress
-  const answeredCount = userAnswer.questions.filter((q) => !q.isSkipped).length;
+  const answeredCount = userAnswer.questions.filter(
+    (q) => !q.isSkipped && q.selectedAnswer !== null,
+  ).length
+
+  const total = session.progress.totalQuestions || 1
+
   await UserTestSession.findByIdAndUpdate(sessionId, {
     "progress.answeredCount": answeredCount,
-    "progress.completionPercentage": Math.round(
-      (answeredCount / session.progress.totalQuestions) * 100
-    ),
+    "progress.completionPercentage": Math.round((answeredCount / total) * 100),
     status: "in-progress",
-  });
-};
+  })
+
+  return {
+    success: true,
+    answeredCount,
+  }
+}
 
 export const submitTestSession = async (sessionId, userId) => {
   const session = await UserTestSession.findOne({
     _id: sessionId,
     userId,
-    status: { $in: ACTIVE_SESSION_STATUSES },
+    status: { $in: [...ACTIVE_SESSION_STATUSES, SESSION_STATUS.TIMEOUT] },
   });
 
   if (!session) {
@@ -331,6 +408,7 @@ export const submitTestSession = async (sessionId, userId) => {
       });
     }
   }
+  // userAnswer.markModified('questions');
   await userAnswer.save();
 
   const results = await calculateSessionResults(sessionId, userId);
@@ -426,112 +504,166 @@ export const getTestSessionResult = async (sessionId, userId) => {
 };
 
 // Pause session
-export const pauseTestSession = async (sessionId, userId) => {
+export const pauseTestSession = async (sessionId, userId, remainingTimeFromClient) => {
   const session = await UserTestSession.findOne({
     _id: sessionId,
     userId,
-    status: { $in: [SESSION_STATUS.STARTED, SESSION_STATUS.IN_PROGRESS] },
   });
 
   if (!session) {
-    throw new Error("Không tìm thấy phiên làm bài hợp lệ");
+    throw new Error("Không tìm thấy phiên làm bài");
   }
 
   const now = new Date();
 
-  // check session expired (7 days)
+  if (session.status === SESSION_STATUS.PAUSED) {
+    return session;
+  }
+
+  if (
+    session.status === SESSION_STATUS.COMPLETED ||
+    session.status === SESSION_STATUS.TIMEOUT
+  ) {
+    return session;
+  }
+
+  if (
+    ![SESSION_STATUS.STARTED, SESSION_STATUS.IN_PROGRESS].includes(
+      session.status
+    )
+  ) {
+    throw new Error("Phiên làm bài không ở trạng thái có thể tạm dừng");
+  }
+
+  // Check expired 7 days
   if (now > session.expiredAt) {
     session.status = SESSION_STATUS.TIMEOUT;
     session.completedAt = now;
+    session.progress.timeRemaining = 0;
     await session.save();
-    throw new Error("Phiên thi đã hết hạn");
+
+    return session;
   }
 
-  // calculate active time in this session
   const lastActiveTime = session.resumedAt || session.startedAt;
-  const activeTimeThisSession = Math.floor((now - lastActiveTime) / 1000);
 
-  // update total timeSpent
+  const activeTimeThisSession = Math.max(
+    0,
+    Math.floor((now - lastActiveTime) / 1000)
+  );
+
   session.timeSpent = (session.timeSpent || 0) + activeTimeThisSession;
 
-  // calc timeRemaining if has time limit
   const timeLimit = session.testConfig.timeLimit;
-  let timeRemaining = null;
+
   if (timeLimit > 0) {
     const timeLimitSeconds = timeLimit * 60;
-    timeRemaining = Math.max(0, timeLimitSeconds - session.timeSpent);
+    
+    let timeRemaining;
+    if (remainingTimeFromClient !== undefined && remainingTimeFromClient !== null) {
+      timeRemaining = Math.max(0, parseInt(remainingTimeFromClient, 10));
+      // Adjust timeSpent based on client remaining time to ensure consistency
+      session.timeSpent = Math.max(0, timeLimitSeconds - timeRemaining);
+    } else {
+      timeRemaining = Math.max(0, timeLimitSeconds - session.timeSpent);
+    }
+
+    session.progress.timeRemaining = timeRemaining;
 
     if (timeRemaining <= 0) {
       session.status = SESSION_STATUS.TIMEOUT;
       session.completedAt = now;
-      session.progress.timeRemaining = 0;
       await session.save();
-      throw new Error("Hết thời gian làm bài");
-    }
 
-    session.progress.timeRemaining = timeRemaining;
+      return session;
+    }
   } else {
-    session.progress.timeRemaining = timeRemaining;
+    session.progress.timeRemaining = null;
   }
 
-  // update session
   session.status = SESSION_STATUS.PAUSED;
   session.pausedAt = now;
+  session.resumedAt = null;
 
   await session.save();
+
+  return session;
 };
 
 export const resumeTestSession = async (sessionId, userId) => {
   const session = await UserTestSession.findOne({
     _id: sessionId,
     userId,
-    status: SESSION_STATUS.PAUSED,
   });
 
   if (!session) {
-    throw new Error("Không tìm thấy phiên làm bài hợp lệ");
+    throw new Error("Không tìm thấy phiên làm bài");
   }
 
   const now = new Date();
 
-  // check session expired (7 days)
+  if (
+    session.status === SESSION_STATUS.IN_PROGRESS ||
+    session.status === SESSION_STATUS.STARTED
+  ) {
+    return session;
+  }
+
+  if (
+    session.status === SESSION_STATUS.COMPLETED ||
+    session.status === SESSION_STATUS.TIMEOUT
+  ) {
+    return session;
+  }
+
+  if (session.status !== SESSION_STATUS.PAUSED) {
+    throw new Error("Phiên làm bài không ở trạng thái có thể tiếp tục");
+  }
+
   if (now > session.expiredAt) {
     session.status = SESSION_STATUS.TIMEOUT;
     session.completedAt = now;
+    session.progress.timeRemaining = 0;
     await session.save();
-    throw new Error("Phiên thi đã hết hạn");
+
+    return session;
   }
 
   const timeLimit = session.testConfig.timeLimit;
   const timeRemaining = session.progress.timeRemaining;
 
-  // if has time limit
   if (timeLimit && timeLimit > 0) {
     if (timeRemaining === null || timeRemaining === undefined) {
       throw new Error("Không tìm thấy thông tin thời gian còn lại");
     }
 
-    // check timeRemaining
     if (timeRemaining <= 0) {
       session.status = SESSION_STATUS.TIMEOUT;
       session.completedAt = now;
+      session.progress.timeRemaining = 0;
       await session.save();
-      throw new Error("Hết thời gian làm bài");
+
+      return session;
     }
   }
 
-  // calc total pause duration
   if (session.pausedAt) {
-    const pauseDuration = Math.floor((now - session.pausedAt) / 1000);
+    const pauseDuration = Math.max(
+      0,
+      Math.floor((now - session.pausedAt) / 1000)
+    );
+
     session.progress.totalPauseDuration =
       (session.progress.totalPauseDuration || 0) + pauseDuration;
   }
 
-  // resume session
   session.status = SESSION_STATUS.IN_PROGRESS;
   session.resumedAt = now;
+  session.pausedAt = null;
 
   await session.save();
+
+  return session;
 };
 
 // Helper function
@@ -581,7 +713,7 @@ const calculateTimeRemaining = ({
   startedAt,
   resumedAt = null,
   status,
-  previousTimeRemainingMinutes = 0,
+  previousTimeRemainingSeconds = 0,
   timeSpentSeconds = 0,
 }) => {
   // Không giới hạn thời gian
@@ -589,9 +721,9 @@ const calculateTimeRemaining = ({
     return null;
   }
 
-  // Nếu đang PAUSED → lấy giá trị đã lưu (phút → giây)
+  // Nếu đang PAUSED → lấy giá trị đã lưu (giây)
   if (status === SESSION_STATUS.PAUSED) {
-    return Math.max(0, previousTimeRemainingMinutes * 60);
+    return Math.max(0, previousTimeRemainingSeconds);
   }
 
   // Tính cho session đang active

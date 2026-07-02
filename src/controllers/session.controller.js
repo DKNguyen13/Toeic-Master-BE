@@ -21,9 +21,12 @@ export const startSession = async (req, res) => {
 export const getTestSession = async (req, res) => {
     try {
         const { sessionId } = req.params;
+        const { onlySession } = req.query;
         const userId = req.user.id;
 
-        const result = await sessionTestService.getTestSession(sessionId, userId);
+        const result = await sessionTestService.getTestSession(sessionId, userId, {
+            onlySession: onlySession === 'true'
+        });
 
         return success(res, 'Lấy thành công thông tin phiên thi', { result });
     } catch (err) {
@@ -61,13 +64,14 @@ export const submitSession = async (req, res) => {
     }
 };
 
-// [PUT] /api/session/:sessionId/pause
+// [POST] /api/session/:sessionId/pause
 export const pauseSession = async (req, res) => {
     try {
         const { sessionId } = req.params;
         const userId = req.user.id;
+        const { remainingTime } = req.body;
 
-        await sessionTestService.pauseTestSession(sessionId, userId);
+        await sessionTestService.pauseTestSession(sessionId, userId, remainingTime);
         return success(res, 'Pause phiên làm bài thành công');
     } catch (err) {
         return error(res, 'Lỗi xảy ra khi tạm dừng phiên làm bài', 500, err.message);
