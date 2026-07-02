@@ -119,5 +119,4 @@ initReminderScheduler();
 // Cron job dọn dẹp các phiên làm bài hết hạn mỗi ngày lúc 01:00
 initSessionCleanupScheduler();
 
-
 export default app;

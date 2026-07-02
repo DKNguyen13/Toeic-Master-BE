@@ -36,7 +36,7 @@ export const config = {
 
   // Cookie options
   cookieSecure: process.env.COOKIE_SECURE, // true => chỉ gửi qua https
-  cookieSameSite: process.env.COOKIE_SAMESITE,
+  cookieSameSite: process.env.COOKIE_SAME_SITE,
   cookieHttpOnly: process.env.COOKIE_HTTPONLY, // default: true
 
   // Cloudinary
