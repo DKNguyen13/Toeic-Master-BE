@@ -34,6 +34,7 @@ import { initChatbotSocket } from './sockets/chatbot/chatbotSocket.js';
 import { initSaveAnswersSocket } from './sockets/saveAnswer/saveAnswerSocket.js';
 
 const app = express()
+app.set("trust proxy", 1);
 const server = http.createServer(app);
 
 const allowedOrigins = [
