@@ -1,6 +1,18 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+const parseBoolean = (value, defaultValue = false) => {
+  if (value === undefined) return defaultValue;
+  return String(value).toLowerCase() === 'true';
+};
+
+const parseSameSite = (value) => {
+  const normalized = String(value || 'lax').toLowerCase();
+  if (normalized === 'none') return 'none';
+  if (normalized === 'strict') return 'strict';
+  return 'lax';
+};
+
 export const config = {
   mongodbUri: process.env.MONGODB_URI,
   port: process.env.PORT || 8080,
@@ -35,9 +47,12 @@ export const config = {
   googleServerCallback: process.env.GOOGLE_SERVER_CALLBACK,
 
   // Cookie options
-  cookieSecure: process.env.COOKIE_SECURE, // true => chỉ gửi qua https
-  cookieSameSite: process.env.COOKIE_SAME_SITE,
-  cookieHttpOnly: process.env.COOKIE_HTTPONLY, // default: true
+  cookieSecure: parseBoolean(
+    process.env.COOKIE_SECURE,
+    process.env.NODE_ENV === 'production'
+  ),
+  cookieSameSite: parseSameSite(process.env.COOKIE_SAME_SITE),
+  cookieHttpOnly: true,
 
   // Cloudinary
   cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME,
