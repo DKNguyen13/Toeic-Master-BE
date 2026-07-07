@@ -21,6 +21,8 @@ import analysis from './routes/analysis.route.js';
 import flashcardSetRoutes from './routes/flashcardSet.routes.js';
 import notificationRouter from './routes/notification.routes.js';
 import fillBlankQuestionRouter from './routes/fillBlankQuestion.routes.js';
+import systemRouter from './routes/system.routes.js';
+import { maintenanceMiddleware } from './middleware/maintenance.middleware.js';
 
 // Services
 import * as InitData from './services/initData.service.js';
@@ -53,9 +55,11 @@ app.use(cors({
 }));
 app.use(express.json({ limit: "20mb" }));
 app.use(cookieParser());
+app.use(maintenanceMiddleware);
 
 app.use('/api/admin', adminRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/system', systemRouter);
 app.use('/api/vip', vipRouter);
 app.use("/api/payment", vnpayRoutes);
 app.use('/api/lessons', lessonRouter);

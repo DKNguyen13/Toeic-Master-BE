@@ -4,6 +4,11 @@ import limitRequest from '../middleware/limitRequest.middleware.js';
 import * as adminController from "../controllers/admin.controller.js";
 import { uploadTestFiles } from "../middleware/uploadTest.middleware.js";
 import * as testImportController from "../controllers/testImport.controller.js";
+import {
+	getMaintenanceStatusAdmin,
+	startMaintenance,
+	stopMaintenance,
+} from "../controllers/maintenance.controller.js";
 
 const router = express.Router();
 
@@ -14,6 +19,9 @@ router.get('/dashboard', authenticate, isAdmin, adminController.getAdminDashboar
 router.get("/revenue-stats", authenticate, isAdmin, adminController.getRevenueStatsController);
 router.get("/users/export", authenticate, isAdmin, adminController.exportAllUsersController);
 router.patch('/activate', authenticate, isAdmin, adminController.changeActivateUserController);
+router.get('/maintenance', authenticate, isAdmin, getMaintenanceStatusAdmin);
+router.post('/maintenance', authenticate, isAdmin, startMaintenance);
+router.delete('/maintenance', authenticate, isAdmin, stopMaintenance);
 
 router.post('/forgot-password', limitRequest, adminController.adminForgotPassword);
 router.post('/reset-password', adminController.adminResetPassword);
