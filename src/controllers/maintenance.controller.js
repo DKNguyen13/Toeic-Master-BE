@@ -1,4 +1,7 @@
 import User from "../models/user.model.js";
+import UserTestSession from "../models/userTestSession.model.js";
+import UserAnswer from "../models/userAnswer.model.js";
+import { SESSION_STATUS } from "../constants/sessionTest.constants.js";
 import { error, success } from "../utils/response.js";
 import { clearMaintenanceState, getMaintenanceState, setMaintenanceState } from "../services/maintenance.service.js";
 
@@ -55,6 +58,27 @@ export const startMaintenance = async (req, res) => {
       enabled: true,
       createdBy,
     });
+
+    // Clean up all active test sessions (started, in-progress, paused) and their answers
+    const activeSessions = await UserTestSession.find({
+      status: { $in: [SESSION_STATUS.STARTED, SESSION_STATUS.IN_PROGRESS, SESSION_STATUS.PAUSED] }
+    }, { _id: 1 }).lean();
+
+    if (activeSessions.length > 0) {
+      const sessionIds = activeSessions.map((session) => session._id);
+
+      // Cascading delete corresponding user answers
+      await UserAnswer.deleteMany({
+        sessionId: { $in: sessionIds },
+      });
+
+      // Delete the test sessions
+      await UserTestSession.deleteMany({
+        _id: { $in: sessionIds },
+      });
+
+      console.log(`[Maintenance] Cleaned up ${sessionIds.length} active/paused test sessions and their answers.`);
+    }
 
     await notifyAllUsers(
       req,
