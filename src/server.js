@@ -21,6 +21,8 @@ import analysis from './routes/analysis.route.js';
 import flashcardSetRoutes from './routes/flashcardSet.routes.js';
 import notificationRouter from './routes/notification.routes.js';
 import fillBlankQuestionRouter from './routes/fillBlankQuestion.routes.js';
+import systemRouter from './routes/system.routes.js';
+import { maintenanceMiddleware } from './middleware/maintenance.middleware.js';
 
 // Services
 import * as InitData from './services/initData.service.js';
@@ -34,6 +36,7 @@ import { initChatbotSocket } from './sockets/chatbot/chatbotSocket.js';
 import { initSaveAnswersSocket } from './sockets/saveAnswer/saveAnswerSocket.js';
 
 const app = express()
+app.set("trust proxy", 1);
 const server = http.createServer(app);
 
 const allowedOrigins = [
@@ -52,9 +55,11 @@ app.use(cors({
 }));
 app.use(express.json({ limit: "20mb" }));
 app.use(cookieParser());
+app.use(maintenanceMiddleware);
 
 app.use('/api/admin', adminRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/system', systemRouter);
 app.use('/api/vip', vipRouter);
 app.use("/api/payment", vnpayRoutes);
 app.use('/api/lessons', lessonRouter);
@@ -117,6 +122,5 @@ initReminderScheduler();
 
 // Cron job dọn dẹp các phiên làm bài hết hạn mỗi ngày lúc 01:00
 initSessionCleanupScheduler();
-
 
 export default app;

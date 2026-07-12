@@ -357,13 +357,13 @@ export const createFlashcardsBulk = async (req, res) => {
       note: f.note || ""
     }));
 
-    await Flashcard.insertMany(docs);
+    const createdFlashcards = await Flashcard.insertMany(docs);
 
     await FlashcardSet.findByIdAndUpdate(setId, {
       $inc: { count: docs.length }
     });
 
-    return success(res, `Đã tạo ${docs.length} flashcards`, docs, 201);
+    return success(res, `Đã tạo ${docs.length} flashcards`, createdFlashcards, 201);
 
   } catch (err) {
     console.error(err);
